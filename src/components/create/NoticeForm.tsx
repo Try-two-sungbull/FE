@@ -18,82 +18,142 @@ import {
   Sparkles, 
   CheckCircle2,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface FormField {
   id: string;
   label: string;
+  sourceLabel?: string; // 구매계획서에서의 항목명
   type: "text" | "number" | "select" | "textarea" | "date";
   placeholder?: string;
   required?: boolean;
   options?: { value: string; label: string }[];
   hint?: string;
-  aiGenerated?: boolean;
+  isBlueField?: boolean; // 파란 글자 (구매계획서에서 추출되는 항목)
 }
 
+// 구매계획서 → 입찰공고 매핑 필드
 const formFields: FormField[] = [
   {
     id: "title",
     label: "공고명",
+    sourceLabel: "물품명/구매물품",
     type: "text",
-    placeholder: "예: 사무용 컴퓨터 구매",
+    placeholder: "예: 실내공기질 자동측정망 가스상 측정장비 구매",
     required: true,
+    isBlueField: true,
+    hint: "구매계획서의 '물품명' 또는 '구매물품'에서 자동 추출됩니다",
   },
   {
     id: "amount",
-    label: "추정가격",
+    label: "예산액",
+    sourceLabel: "소요예산",
     type: "number",
-    placeholder: "원 단위로 입력",
+    placeholder: "부가세 포함 금액",
     required: true,
-    hint: "부가세 포함 금액",
+    isBlueField: true,
+    hint: "구매계획서의 '소요예산'에서 자동 추출됩니다 (부가세 포함)",
+  },
+  {
+    id: "period",
+    label: "용역기간/계약기간",
+    sourceLabel: "납품기한/계약기간",
+    type: "text",
+    placeholder: "예: 계약 후 120일",
+    required: true,
+    isBlueField: true,
+    hint: "구매계획서의 '납품기한' 또는 '계약기간'에서 자동 추출됩니다",
+  },
+  {
+    id: "productCode",
+    label: "세부품명번호",
+    sourceLabel: "세부품명번호(10자리)",
+    type: "text",
+    placeholder: "예: 4111319901",
+    required: true,
+    isBlueField: true,
+    hint: "10자리 세부품명번호 입력 시 품명이 자동 생성됩니다",
+  },
+  {
+    id: "productName",
+    label: "품명",
+    type: "text",
+    placeholder: "세부품명번호 입력 시 자동 생성",
+    isBlueField: true,
+  },
+  {
+    id: "deliveryLocation",
+    label: "납품장소",
+    sourceLabel: "납품장소/설치지점",
+    type: "text",
+    placeholder: "예: 생활환경지원부 장비실",
+    isBlueField: true,
+    hint: "구매계획서의 '납품장소'에서 자동 추출됩니다",
+  },
+  {
+    id: "bidMethod",
+    label: "낙찰 방법",
+    sourceLabel: "낙찰자 선정방법",
+    type: "select",
+    required: true,
+    options: [
+      { value: "small", label: "소액수의계약" },
+      { value: "qualified", label: "적격심사" },
+      { value: "negotiation", label: "협상에 의한 계약" },
+    ],
+    hint: "금액 및 구매계획서 내용에 따라 자동 결정됩니다",
   },
   {
     id: "contractMethod",
     label: "계약 방법",
+    sourceLabel: "계약방법/입찰방법",
     type: "select",
     required: true,
+    isBlueField: true,
     options: [
       { value: "general", label: "일반경쟁" },
       { value: "limited", label: "제한경쟁" },
-      { value: "designated", label: "지명경쟁" },
       { value: "private", label: "수의계약" },
     ],
+    hint: "구매계획서의 '계약방법' 또는 '입찰방법'에서 추출됩니다",
   },
   {
-    id: "contractType",
-    label: "계약 구분",
+    id: "companyRestriction",
+    label: "기업 제한",
+    sourceLabel: "입찰참가자격",
     type: "select",
     required: true,
+    isBlueField: true,
     options: [
-      { value: "unit", label: "단가계약" },
-      { value: "total", label: "총액계약" },
-      { value: "long-term", label: "장기계속계약" },
+      { value: "small", label: "소기업 제한 (1억 미만)" },
+      { value: "sme", label: "중소기업 제한 (1억~2.3억)" },
+      { value: "none", label: "제한 없음 (2.3억 이상)" },
     ],
+    hint: "금액에 따라 자동 결정: 1억 미만=소기업, 1억~2.3억=중소기업",
   },
   {
-    id: "period",
-    label: "계약 기간",
-    type: "text",
-    placeholder: "예: 계약일로부터 30일",
-    required: true,
-    aiGenerated: true,
-  },
-  {
-    id: "deliveryLocation",
-    label: "납품 장소",
-    type: "text",
-    placeholder: "예: 본청 물류창고",
-    aiGenerated: true,
+    id: "jointContract",
+    label: "공동계약",
+    sourceLabel: "공동계약 허용 여부",
+    type: "select",
+    isBlueField: true,
+    options: [
+      { value: "no", label: "해당 없음 (단독)" },
+      { value: "yes", label: "공동이행방식 허용" },
+    ],
+    hint: "구매계획서에 명시되지 않으면 단독 참여로 간주됩니다",
   },
   {
     id: "qualifications",
-    label: "입찰 참가 자격",
+    label: "입찰참가자격 (상세)",
+    sourceLabel: "입찰참가자격",
     type: "textarea",
-    placeholder: "입찰 참가에 필요한 자격 요건을 입력해주세요",
-    required: true,
-    aiGenerated: true,
+    placeholder: "추가 입찰 참가 자격 요건",
+    isBlueField: true,
+    hint: "구매계획서의 '입찰참가자격'에서 자동 추출됩니다",
   },
 ];
 
@@ -108,33 +168,79 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
   const [isUploading, setIsUploading] = useState(false);
 
   const handleChange = (id: string, value: string) => {
-    setFormData((prev) => ({ ...prev, [id]: value }));
-    onPreview?.({ ...formData, [id]: value });
+    const newData = { ...formData, [id]: value };
+    
+    // 금액에 따른 자동 기업 제한 설정
+    if (id === "amount") {
+      const amount = parseInt(value.replace(/,/g, "")) || 0;
+      const amountExcludingVat = amount / 1.1; // 부가세 제외 금액
+      
+      if (amountExcludingVat < 100000000) {
+        newData.companyRestriction = "small";
+      } else if (amountExcludingVat < 230000000) {
+        newData.companyRestriction = "sme";
+      } else {
+        newData.companyRestriction = "none";
+      }
+      
+      // 금액에 따른 낙찰 방법 자동 설정
+      if (amountExcludingVat <= 100000000) {
+        newData.bidMethod = "small"; // 소액수의 가능
+      } else {
+        newData.bidMethod = "qualified"; // 적격심사 필수
+      }
+    }
+    
+    setFormData(newData);
+    onPreview?.(newData);
   };
 
   const handleFileUpload = () => {
     setIsUploading(true);
-    // Simulate file processing
+    // 구매계획서 OCR 분석 시뮬레이션
     setTimeout(() => {
       setIsUploading(false);
-      // Auto-fill demo data
-      setFormData({
-        title: "사무용 컴퓨터 구매",
-        amount: "45000000",
+      // 파란 글자 항목들 자동 채움 (구매계획서에서 추출)
+      const extractedData = {
+        title: "실내공기질 자동측정망 가스상 측정장비 구매",
+        amount: "67214400",
+        period: "계약 후 120일",
+        productCode: "4111319901",
+        productName: "대기오염측정기",
+        deliveryLocation: "생활환경지원부 장비실(인천시 서구 청라에메랄드로94, 6층)",
         contractMethod: "general",
-        contractType: "total",
-        period: "계약일로부터 30일",
-        deliveryLocation: "본청 전산실",
-        qualifications: "「소프트웨어 진흥법」에 따른 소프트웨어사업자로 등록된 업체\n「중소기업기본법」 제2조에 따른 중소기업",
-      });
-    }, 1500);
+        companyRestriction: "sme",
+        jointContract: "no",
+        bidMethod: "qualified",
+        qualifications: "「중소기업기본법」제2조에 따른 소기업 또는「소상공인 보호 및 지원에 관한 법률」제2조에 따른 소상공인으로서 「중소기업 범위 및 확인에 관한 규정」에 따라 발급된 <소기업·소상공인 확인서>를 소지한 자",
+      };
+      setFormData(extractedData);
+      onPreview?.(extractedData);
+    }, 2000);
   };
 
   const filledCount = Object.values(formData).filter(Boolean).length;
-  const totalRequired = formFields.filter((f) => f.required).length;
+  const requiredFields = formFields.filter((f) => f.required);
+  const filledRequired = requiredFields.filter((f) => formData[f.id]).length;
 
   return (
     <div className="space-y-6">
+      {/* 매핑 정보 안내 */}
+      <Card variant="glass" className="border-l-4 border-l-info animate-fade-in">
+        <CardContent className="p-4">
+          <div className="flex items-start gap-3">
+            <Info className="h-5 w-5 text-info shrink-0 mt-0.5" />
+            <div>
+              <h4 className="font-medium text-sm mb-1">파란 글자 항목 안내</h4>
+              <p className="text-xs text-muted-foreground">
+                <span className="text-blue-600 font-medium">파란색</span>으로 표시된 항목은 구매계획서에서 자동 추출되어 입찰공고에 반영됩니다. 
+                발주계획서를 업로드하면 해당 항목들이 자동으로 채워집니다.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
       {/* Document Upload Card */}
       <Card variant="glass" className="border-dashed border-2 animate-fade-in">
         <CardContent className="p-6">
@@ -149,9 +255,9 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
               )} />
             </div>
             <div className="flex-1">
-              <h3 className="font-semibold mb-1">발주계획서 업로드</h3>
+              <h3 className="font-semibold mb-1">구매계획서 업로드</h3>
               <p className="text-sm text-muted-foreground mb-3">
-                한글(.hwp) 또는 PDF 파일을 업로드하면 AI가 자동으로 항목을 채워드립니다
+                한글(.hwp) 또는 PDF 파일을 업로드하면 AI가 <span className="text-blue-600 font-medium">파란 글자 항목</span>을 자동으로 추출합니다
               </p>
               <Button
                 variant="outline"
@@ -163,7 +269,7 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                 {isUploading ? (
                   <>
                     <Sparkles className="h-4 w-4 animate-spin" />
-                    분석 중...
+                    구매계획서 분석 중...
                   </>
                 ) : (
                   <>
@@ -182,26 +288,37 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
         <CardHeader className="flex flex-row items-center justify-between">
           <CardTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
-            필수 항목 입력
+            공고문 항목 입력
           </CardTitle>
           <Badge variant="outline" className="font-normal">
-            {filledCount} / {totalRequired} 완료
+            {filledRequired} / {requiredFields.length} 필수항목
           </Badge>
         </CardHeader>
         <CardContent className="space-y-5">
           {formFields.map((field) => (
             <div key={field.id} className="space-y-2">
-              <div className="flex items-center gap-2">
-                <Label htmlFor={field.id} className="text-sm font-medium">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Label 
+                  htmlFor={field.id} 
+                  className={cn(
+                    "text-sm font-medium",
+                    field.isBlueField && "text-blue-600"
+                  )}
+                >
                   {field.label}
                   {field.required && (
                     <span className="text-destructive ml-0.5">*</span>
                   )}
                 </Label>
-                {field.aiGenerated && formData[field.id] && (
-                  <Badge className="bg-accent/10 text-accent border-accent/20 text-[10px] gap-1">
+                {field.sourceLabel && (
+                  <Badge variant="outline" className="text-[10px] font-normal text-muted-foreground">
+                    구매계획서: {field.sourceLabel}
+                  </Badge>
+                )}
+                {field.isBlueField && formData[field.id] && (
+                  <Badge className="bg-blue-100 text-blue-700 border-blue-200 text-[10px] gap-1">
                     <Sparkles className="h-2.5 w-2.5" />
-                    AI 추천
+                    자동추출
                   </Badge>
                 )}
               </div>
@@ -213,7 +330,7 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                   value={formData[field.id] || ""}
                   onChange={(e) => handleChange(field.id, e.target.value)}
                   className={cn(
-                    formData[field.id] && field.aiGenerated && "border-accent/50 bg-accent/5"
+                    formData[field.id] && field.isBlueField && "border-blue-300 bg-blue-50/50 text-blue-900"
                   )}
                 />
               )}
@@ -226,6 +343,9 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                     placeholder={field.placeholder}
                     value={formData[field.id] ? Number(formData[field.id]).toLocaleString() : ""}
                     onChange={(e) => handleChange(field.id, e.target.value.replace(/,/g, ""))}
+                    className={cn(
+                      formData[field.id] && field.isBlueField && "border-blue-300 bg-blue-50/50 text-blue-900"
+                    )}
                   />
                   <span className="absolute right-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">
                     원
@@ -238,7 +358,9 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                   value={formData[field.id]}
                   onValueChange={(value) => handleChange(field.id, value)}
                 >
-                  <SelectTrigger>
+                  <SelectTrigger className={cn(
+                    formData[field.id] && field.isBlueField && "border-blue-300 bg-blue-50/50 text-blue-900"
+                  )}>
                     <SelectValue placeholder="선택해주세요" />
                   </SelectTrigger>
                   <SelectContent>
@@ -257,9 +379,9 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                   placeholder={field.placeholder}
                   value={formData[field.id] || ""}
                   onChange={(e) => handleChange(field.id, e.target.value)}
-                  rows={4}
+                  rows={3}
                   className={cn(
-                    formData[field.id] && field.aiGenerated && "border-accent/50 bg-accent/5"
+                    formData[field.id] && field.isBlueField && "border-blue-300 bg-blue-50/50 text-blue-900"
                   )}
                 />
               )}
@@ -272,7 +394,7 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
 
           <div className="pt-4 flex items-center justify-between">
             <div className="flex items-center gap-2 text-sm">
-              {filledCount >= totalRequired ? (
+              {filledRequired >= requiredFields.length ? (
                 <>
                   <CheckCircle2 className="h-4 w-4 text-success" />
                   <span className="text-success font-medium">모든 필수 항목이 입력되었습니다</span>
@@ -281,13 +403,13 @@ export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
                 <>
                   <AlertCircle className="h-4 w-4 text-muted-foreground" />
                   <span className="text-muted-foreground">
-                    {totalRequired - filledCount}개 필수 항목이 남았습니다
+                    {requiredFields.length - filledRequired}개 필수 항목이 남았습니다
                   </span>
                 </>
               )}
             </div>
-            <Button className="gap-2" disabled={filledCount < totalRequired}>
-              미리보기
+            <Button className="gap-2" disabled={filledRequired < requiredFields.length}>
+              공고문 생성
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
