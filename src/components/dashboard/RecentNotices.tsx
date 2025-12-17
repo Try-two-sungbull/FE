@@ -14,38 +14,7 @@ interface Notice {
 }
 
 const recentNotices: Notice[] = [
-  {
-    id: "1",
-    title: "사무용 컴퓨터 구매",
-    type: "물품 · 적격심사",
-    status: "published",
-    updatedAt: "2시간 전",
-    amount: "45,000,000원",
-  },
-  {
-    id: "2",
-    title: "청사 시설물 유지보수 용역",
-    type: "일반용역 · 협상계약",
-    status: "review",
-    updatedAt: "5시간 전",
-    amount: "120,000,000원",
-  },
-  {
-    id: "3",
-    title: "전산장비 소모품 구매",
-    type: "물품 · 소액수의",
-    status: "draft",
-    updatedAt: "1일 전",
-    amount: "8,500,000원",
-  },
-  {
-    id: "4",
-    title: "보안 시스템 구축 사업",
-    type: "기술용역 · 협상계약",
-    status: "published",
-    updatedAt: "2일 전",
-    amount: "350,000,000원",
-  },
+
 ];
 
 const statusConfig = {
@@ -82,7 +51,7 @@ export function RecentNotices() {
         {recentNotices.map((notice) => {
           const status = statusConfig[notice.status];
           const StatusIcon = status.icon;
-          
+
           return (
             <div
               key={notice.id}
