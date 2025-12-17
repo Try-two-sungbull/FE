@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -161,11 +161,19 @@ interface NoticeFormProps {
   type?: string;
   subType?: string;
   onPreview?: (data: Record<string, string>) => void;
+  formData?: Record<string, string>;
 }
 
-export function NoticeForm({ type, subType, onPreview }: NoticeFormProps) {
-  const [formData, setFormData] = useState<Record<string, string>>({});
+export function NoticeForm({ type, subType, onPreview, formData: externalFormData }: NoticeFormProps) {
+  const [formData, setFormData] = useState<Record<string, string>>(externalFormData || {});
   const [isUploading, setIsUploading] = useState(false);
+
+  // 외부에서 데이터가 변경되면 동기화
+  useEffect(() => {
+    if (externalFormData) {
+      setFormData(externalFormData);
+    }
+  }, [externalFormData]);
 
   const handleChange = (id: string, value: string) => {
     const newData = { ...formData, [id]: value };

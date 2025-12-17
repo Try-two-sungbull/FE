@@ -152,8 +152,12 @@ const Index = () => {
                   type={selectedType?.type}
                   subType={selectedType?.subType}
                   onPreview={setFormData}
+                  formData={formData}
                 />
-                <DocumentPreview data={formData} />
+                <DocumentPreview 
+                  data={formData} 
+                  onDataChange={setFormData}
+                />
               </div>
             </div>
           )}
