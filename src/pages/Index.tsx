@@ -72,38 +72,12 @@ const Index = () => {
 
               {/* Stats Grid */}
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+                {/* {data.map((stat) => (
                 <StatCard
-                  title="전체 공고문"
-                  value="156"
-                  change="+12 이번 달"
-                  changeType="positive"
-                  icon={FileText}
-                  variant="default"
+                  key={stat.title}
+                  {...stat}
                 />
-                <StatCard
-                  title="게시 완료"
-                  value="142"
-                  change="91% 완료율"
-                  changeType="positive"
-                  icon={CheckCircle2}
-                  variant="success"
-                />
-                <StatCard
-                  title="검토 대기"
-                  value="8"
-                  change="3건 긴급"
-                  changeType="negative"
-                  icon={Clock}
-                  variant="warning"
-                />
-                <StatCard
-                  title="법령 알림"
-                  value="3"
-                  change="이번 주 업데이트"
-                  changeType="neutral"
-                  icon={AlertTriangle}
-                  variant="accent"
-                />
+                ))} */}
               </div>
 
               {/* Main Content Grid */}
