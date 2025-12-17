@@ -36,8 +36,8 @@ const purchaseTypes: TypeOption[] = [
     title: "물품 구매",
     description: "사무용품, 장비, 소모품 등의 구매",
     subTypes: [
-      { id: "small", title: "소액수의계약", description: "2천만원 이하 물품", recommended: true },
-      { id: "qualified", title: "적격심사", description: "2천만원 초과 물품" },
+      { id: "small", title: "소액수의계약", description: "1억 이하 물품", recommended: true },
+      { id: "qualified", title: "적격심사", description: "1억 초과 물품" },
       { id: "negotiation", title: "협상에 의한 계약", description: "제안서 평가 방식" },
     ],
   },
