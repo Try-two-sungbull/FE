@@ -62,11 +62,18 @@ export async function uploadApi(
   const formData = new FormData();
   formData.append('file', file);
 
+  let baseUrl = import.meta.env.VITE_AI_BASE_URL;
+  if (baseUrl && baseUrl.startsWith('=')) {
+    baseUrl = baseUrl.slice(1);
+  }
+
+  const url = `${baseUrl}/api/v1/agent/classify`;
+  console.log('Upload URL:', url);
+
   const response = await fetch(
-    `${import.meta.env.VITE_AI_BASE_URL}/api/v1/agent/upload`,
+    url,
     {
       method: 'POST',
-      credentials: 'include',
       body: formData,
     }
   );

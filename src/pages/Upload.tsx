@@ -127,9 +127,6 @@ const Upload = () => {
         )
       );
 
-      // Simulate AI processing time
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
       // Update file with server response
       setFiles((prev) =>
         prev.map((f) =>

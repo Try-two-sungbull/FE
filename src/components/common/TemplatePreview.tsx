@@ -23,15 +23,17 @@ export const TemplatePreview = ({ data }) => {
       </div>
       <div className="border-[0.5mm] border-solid border-black p-2">
         <div className="mb-6 text-xs leading-7">
-          <p className="indent-2 mb-2">
-            이 계약은 「국가를 당사자로 하는 계약에 관한 법률」또는
-            「지방자치단체를 당사자로 하는 계약에 관한 법률」에 따른
-            청렴계약제가 적용됩니다. 입찰자는 반드시 입찰서 제출 시 아래
-            청렴계약서에 관한 내용을 숙지·승낙하여야 하며, 동 내용을 위반한 경우
-            발주기관의 조치에 대해서 어떠한 이의도 제기할 수 없습니다.
-          </p>
+          <div className="border-[0.5mm] border-solid border-black p-2">
+            <p className="indent-2 mb-2 font-bold">
+              이 계약은 「국가를 당사자로 하는 계약에 관한 법률」또는
+              「지방자치단체를 당사자로 하는 계약에 관한 법률」에 따른
+              청렴계약제가 적용됩니다. 입찰자는 반드시 입찰서 제출 시 아래
+              청렴계약서에 관한 내용을 숙지·승낙하여야 하며, 동 내용을 위반한 경우
+              발주기관의 조치에 대해서 어떠한 이의도 제기할 수 없습니다.
+            </p>
+          </div>
 
-          <p className="indent-2 mb-2">
+          <p className="indent-2 mb-2 mt-4">
             우리 공단은 입찰담합 방지 및 공정거래질서 확립을 위해 「독점규제 및
             공정거래에 관한 법률」에 따라 입찰담합징후분석시스템에 입찰정보를
             제공하고 있습니다. 입찰담 합징후 발견 시 공정거래위원회 제보 및 경찰
@@ -95,19 +97,19 @@ export const TemplatePreview = ({ data }) => {
         </h2>
         <div className="pl-5 text-sm space-y-2">
           <p>
-            가. 공 고 명 : <strong>{data.title}</strong>
+            가. 공 고 명 : <strong><span className='text-blue-600'>{data.title}</span></strong>
           </p>
           <p>나. 계약기간 : {data.contractPeriod}</p>
           <p>
-            다. 예 산 액 : <strong>{data.amount}</strong>
+            다. 예 산 액 : <strong><span className='text-blue-600'>{data.amount}</span></strong>
           </p>
           <p>
             라. 구매범위 : 물품규격서 등 참조(문의 ☎{data.contactPhone},{' '}
             {data.contactName})
           </p>
           <p>
-            마. 전자입찰서 제출기간 : {data.bidSubmitStart} ～{' '}
-            {data.bidSubmitEnd}
+            마. 전자입찰서 제출기간 : <strong><span className='text-blue-600'>{data.bidSubmitStart}</span></strong> ～{' '}
+            <strong><span className='text-blue-600'>{data.bidSubmitEnd}</span></strong>
           </p>
           <p>
             바. 개찰일시 및 장소 : {data.bidOpenTime},
@@ -119,8 +121,39 @@ export const TemplatePreview = ({ data }) => {
       <div className="mb-8">
         <h2 className="text-base font-bold mb-4">2. 견적(입찰) 및 계약방식</h2>
         <div className="pl-5 text-sm space-y-2">
-          <p>가. 소액수의(총액, 전자)대상 용역입니다.</p>
-          <p>나. 적격심사 제외대상입니다.</p>
+          {data.bidMethod === 'small' ? (
+            <>
+              <p>
+                <span className="text-blue-600 font-bold">
+                  가. 소액수의(총액, 전자) 대상입니다.
+                </span>
+              </p>
+              <p>
+                <span className="text-blue-600 font-bold">
+                  나. 적격심사 제외대상입니다.
+                </span>{' '}
+                [우리공단 물품구매 적격심사 세부기준{' '}
+                <span className="text-blue-600 font-bold">
+                  [별표3] 추정가격 고시금액 미만인 물품 제조 또는 구매입찰 적용]
+                </span>
+              </p>
+            </>
+          ) : (
+            <>
+              <p>
+                <span className="text-blue-600 font-bold">
+                  가. {data.contractMethod === 'general' ? '일반경쟁' : '제한경쟁'}
+                  (총액), 전자입찰대상 용역입니다.
+                </span>
+              </p>
+              <p>
+                <span className="text-blue-600 font-bold">
+                  나. 적격심사 대상 용역입니다.
+                </span>
+              </p>
+            </>
+          )}
+          <p>※ 공단 물품구매 적격심사세부기준은 공단홈페이지 (http://www.keco.or.kr/)"입찰정보 /집행기준 “ 참고</p>
           <p>다. 청렴계약이행 서약제 대상입니다.</p>
           <p>
             라. 입찰서는 반드시 국가종합전자조달시스템(www.g2b.go.kr)의
@@ -167,10 +200,11 @@ export const TemplatePreview = ({ data }) => {
 
           <div className=" p-3 my-3 ml-5 ">
             <p className="mb-0">
-              ❍ 중소기업제품 구매촉진 및 판로지원에 관한법률 제9조 및 동법
-              시행규칙 제5조 규정에 의한 직접생산확인증명서[세부품명번호:{' '}
-              {data.productName}({data.productCode})](개찰일 전일까지 발급된
-              것으로 유효기간 내에 있어야 함)를 소지한 자
+              <span className="text-blue-600 font-bold">
+                ❍ 중소기업제품 구매촉진 및 판로지원에 관한법률 제9조 및 동법
+                시행규칙 제5조 규정에 의한 직접생산확인증명서[세부품명번호:{' '}
+                {data.productName}({data.productCode})]제조 또는 공급물품으로 등록된 자
+              </span>
             </p>
           </div>
 
@@ -184,13 +218,13 @@ export const TemplatePreview = ({ data }) => {
             날부터 2년이 지나지 아니한 자는 입찰에 참여할 수 없습니다.
           </p>
           <p>
-            라. 「중소기업기본법」 제2조에 따른 소기업 또는 「소상공인 보호 및
-            지원에 관한 법률」 제2조에 따른 소상공인으로서
-            소기업·소상공인확인서를 소지한 업체이어야 합니다.
+            라. 「중소기업기본법」 제2조에 따른 <span className="text-blue-600 font-bold">소기업</span> 또는 「소상공인 보호 및
+            지원에 관한 법률」 제2조에 따른 <span className="text-blue-600 font-bold">소상공인</span>으로서
+            <span className="text-blue-600 font-bold">소기업·소상공인확인서</span>를 소지한 업체이어야 합니다.
           </p>
 
           <div className=" p-3 my-2 ">
-            <p className="mb-2">
+            <p className="mb-2 font-bold">
               ※ 직접생산확인증명서, 소기업․소상공인확인서는 중소기업공공구매
               종합정보망에서 확인하며 확인되지 않을 경우 입찰참가자격이
               없습니다.
@@ -202,20 +236,26 @@ export const TemplatePreview = ({ data }) => {
       <div className="mb-8">
         <h2 className="text-base font-bold mb-4">4. 공동계약</h2>
         <div className="pl-5 text-sm space-y-2">
-          <p>
-            가. 단독 또는 공동이행방식으로만 입찰참여가 가능하며, 공동수급체
-            구성원은 각각 본 입찰에서 요구하는 입찰참가자격을 모두 갖추어야
-            합니다.
-          </p>
-          <p>
-            나. 공동수급체 구성원은 대표사가 참여 지분율이 가장 많아야 하고,
-            대표사를 포함하여 5개사 이하로 구성하여야 하며, 구성원별 계약참여
-            최소 지분율은 10% 이상으로 하여야 합니다.
-          </p>
-          <p>
-            다. 공동수급협정서 제출기한: {data.consortiumDeadline}, ※해당자에
-            한함, 나라장터 전자 제출
-          </p>
+          {data.jointContract === 'yes' ? (
+            <>
+              <p>
+                가. 단독 또는 공동이행방식으로만 입찰참여가 가능하며, 공동수급체
+                구성원은 각각 본 입찰에서 요구하는 입찰참가자격을 모두 갖추어야
+                합니다.
+              </p>
+              <p>
+                나. 공동수급체 구성원은 대표사가 참여 지분율이 가장 많아야 하고,
+                대표사를 포함하여 5개사 이하로 구성하여야 하며, 구성원별 계약참여
+                최소 지분율은 10% 이상으로 하여야 합니다.
+              </p>
+              <p>
+                다. 공동수급협정서 제출기한: {data.consortiumDeadline}, ※해당자에
+                한함, 나라장터 전자 제출
+              </p>
+            </>
+          ) : (
+            <p className="text-blue-600 font-bold">해당 없음</p>
+          )}
         </div>
       </div>
 
@@ -267,20 +307,18 @@ export const TemplatePreview = ({ data }) => {
               ○ 전자입찰이용안내 : 국가종합전자조달시스템 콜센터(☎1588-0800)
             </p>
             <p>
-              ○ 물품 규격 등 관련사항 - 국민소통실(☎ {data.contactPhone}, 담당 :{' '}
-              {data.contactName})
+              ○ 물품 규격 등 관련사항 - <span className="font-bold text-blue-600">oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)</span>
             </p>
             <p>
-              ○ 입찰․계약 관련사항 : 경영지원처 계약부(☎ {data.contractPhone},
-              담당 : {data.contractName})
+              ○ 입찰․계약 관련사항 : <span className="font-bold text-blue-600">oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)</span>
             </p>
           </div>
         </div>
       </div>
 
-      <div className="border-t-2 border-black pt-6 mt-12">
-        <div className="bg-gray-50 p-4 border border-gray-300">
-          <h3 className="font-bold mb-2">이의제기 및 신고채널 안내</h3>
+      <div className="pt-6 mt-12">
+        <div className="bg-blue-100 p-4 border border-black">
+          <h3 className="font-bold mb-2 text-center">이의제기 및 신고채널 안내</h3>
           <p className="text-xs mb-2">
             ◎ 본 입찰과 관련한 부당행위 또는 부당사례 등과 공단 직원이 금품 및
             향응요구, 지위남용 등 부당한 요구를 할 경우 아래 신고채널을 통해
@@ -298,8 +336,8 @@ export const TemplatePreview = ({ data }) => {
 
       <div className="text-center mt-12">
         <p className="mb-4">위와 같이 공고합니다.</p>
-        <p className="text-base font-bold mb-2">2025년 8월 일</p>
-        <p className="text-lg font-bold">{data.orgName} 계약담당</p>
+        <p className="text-base  mb-2 ml-[30rem]">2025년 00월 00일</p>
+        <p className="text-xl font-bold">{data.orgName} 계약담당</p>
       </div>
     </div>
   );
