@@ -1,4 +1,4 @@
-import { DocumentUploadResponse } from '@/types';
+import { DocumentUploadResponse, ExtractedData } from '@/types';
 
 /**
  * 문서 업로드 API (Mock)
@@ -23,4 +23,66 @@ export async function uploadDocument(
     },
     status: 'completed',
   };
+}
+
+/**
+ * 추출된 문서 데이터를 서버에 저장
+ */
+export async function saveDocumentApi(
+  documentId: string,
+  extractedData: ExtractedData,
+  type?: string,
+  subType?: string
+): Promise<{ id: string; success: boolean }> {
+  const baseUrl = import.meta.env.VITE_BASE_URL || '';
+
+  const response = await fetch(`${baseUrl}/api/documents/${documentId}`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      documentId,
+      extractedData,
+      type,
+      subType,
+    }),
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Save document failed:', response.status, errorText);
+    throw new Error(`문서 저장 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data;
+}
+
+/**
+ * documentId로 문서 데이터 조회
+ */
+export async function getDocumentApi(documentId: string): Promise<{
+  id: string;
+  documentId: string;
+  extractedData: ExtractedData;
+  type?: string;
+  subType?: string;
+}> {
+  const baseUrl = import.meta.env.VITE_BASE_URL || '';
+
+  const response = await fetch(`${baseUrl}/api/documents/${documentId}`, {
+    method: 'GET',
+    credentials: 'include',
+  });
+
+  if (!response.ok) {
+    const errorText = await response.text();
+    console.error('Get document failed:', response.status, errorText);
+    throw new Error(`문서 조회 실패: ${response.status} - ${errorText}`);
+  }
+
+  const data = await response.json();
+  return data;
 }

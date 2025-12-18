@@ -56,20 +56,21 @@ export async function businessesApi(businessCode: string) {
   return data;
 }
 
-export async function uploadApi(
-  file: File,
-) {
+export async function uploadApi(file: File) {
   const formData = new FormData();
   formData.append('file', file);
 
-  const response = await fetch(
-    `${import.meta.env.VITE_AI_BASE_URL}/api/v1/agent/upload`,
-    {
-      method: 'POST',
-      credentials: 'include',
-      body: formData,
-    }
-  );
+  let baseUrl = import.meta.env.VITE_AI_BASE_URL;
+  if (baseUrl && baseUrl.startsWith('=')) {
+    baseUrl = baseUrl.slice(1);
+  }
+
+  const url = `${baseUrl}/api/v1/agent/classify`;
+
+  const response = await fetch(url, {
+    method: 'POST',
+    body: formData,
+  });
   if (!response.ok) {
     const errorText = await response.text();
     console.error('Upload failed:', response.status, errorText);
@@ -77,6 +78,7 @@ export async function uploadApi(
   }
 
   const data = await response.json();
+  console.log(data);
 
   return data;
 }

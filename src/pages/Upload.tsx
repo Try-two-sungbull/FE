@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
@@ -14,10 +15,11 @@ import {
   Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UploadedFile } from '@/types';
+import { UploadedFile, ExtractedData } from '@/types';
 import { uploadApi } from '@/lib/apis';
 
 const Upload = () => {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const { type } = useParams();
@@ -110,8 +112,17 @@ const Upload = () => {
         }
       }, 200);
 
-      // Call real API
+      // Call real API to extract data
       const response = await uploadApi(file);
+
+      // Save uploadApi response to TanStack Query
+      queryClient.setQueryData(['uploadedTemplateData', fileId], response);
+
+      // Extract data from response
+      const extractedData = response.extractedData || response;
+      const documentType = response.type || type || 'goods';
+      const documentSubType = response.subType || response.bidMethod || 'small';
+
       clearInterval(progressInterval);
 
       // Transition to processing state
@@ -119,34 +130,33 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'processing',
-              progress: 100,
-            }
+                ...f,
+                status: 'processing',
+                progress: 100,
+              }
             : f
         )
       );
 
-      // Simulate AI processing time
-      await new Promise((resolve) => setTimeout(resolve, 500));
-
-      // Update file with server response
+      // Update file with extracted data
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'completed',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              type: (type || 'goods') as any, // Use current type from URL or default
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              subType: (response.bidMethod || 'small') as any, // Use bidMethod as subType or default
-              extractedData: {
-                ...response,
-                // Ensure mandatory fields for display are present if API returns different names
-                noticeNumber: response.noticeNumber || '-',
-              },
-            }
+                ...f,
+                status: 'completed',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                type: documentType as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                subType: documentSubType as any,
+                extractedData: {
+                  ...extractedData,
+                  // Ensure mandatory fields for display are present
+                  noticeNumber: extractedData.noticeNumber || '-',
+                  title: extractedData.title || '-',
+                  amount: extractedData.amount || '-',
+                },
+              }
             : f
         )
       );
@@ -156,13 +166,13 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'error',
-              error:
-                error instanceof Error
-                  ? error.message
-                  : '업로드 중 오류가 발생했습니다',
-            }
+                ...f,
+                status: 'error',
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : '업로드 중 오류가 발생했습니다',
+              }
             : f
         )
       );
@@ -174,6 +184,8 @@ const Upload = () => {
     const newFileMap = new Map(actualFiles);
     newFileMap.delete(fileId);
     setActualFiles(newFileMap);
+    // Remove query cache data for this file
+    queryClient.removeQueries({ queryKey: ['uploadedTemplateData', fileId] });
   };
 
   const handleGenerateNotice = (file: UploadedFile) => {
@@ -181,7 +193,6 @@ const Upload = () => {
       navigate(`/editor/${file.type}/${file.subType}`, {
         state: {
           documentId: file.id,
-          extractedData: file.extractedData,
         },
       });
     }
