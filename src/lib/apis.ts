@@ -14,7 +14,6 @@ export async function loginApi(id: string, password: string) {
     }
   );
   const data = await response.json();
-  console.log(data);
 
   if (!response.ok) {
     throw new Error('Login failed');

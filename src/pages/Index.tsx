@@ -11,9 +11,27 @@ import { DocumentPreview } from '@/components/create/DocumentPreview';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
-import { TemplatePreview, MOCK_NOTICE_TEMPLATE } from '@/components/common/TemplatePreview';
+import { TemplatePreview } from '@/components/common/TemplatePreview';
 
 type ViewMode = 'dashboard' | 'select-type' | 'create-form';
+
+const sampleData = {
+  noticeNumber: 'N1-20251657-06',
+  title: '2026년도 환경달력 제작',
+  orgName: '한국환경공단',
+  contractPeriod: '계약후 80일',
+  amount: '89,670,000원(부가가치세 포함)',
+  bidSubmitStart: '2025. 09. .(09:00)',
+  bidSubmitEnd: '2025. 09. .(10:00)',
+  bidOpenTime: '2025. 09. .(11:00)',
+  productCode: '4411200201',
+  productName: '달력',
+  contactPhone: '032-590-3020',
+  contactName: '박찬형 대리',
+  contractPhone: '032-590-3274',
+  contractName: '이미선 과장',
+  consortiumDeadline: '2025. 09. .(18:00)',
+};
 
 const Index = () => {
   const [currentPath, setCurrentPath] = useState('/');
@@ -156,11 +174,7 @@ const Index = () => {
                   formData={formData}
                 />
                 <DocumentPreview data={formData} onDataChange={setFormData} />
-                <TemplatePreview
-                  data={formData}
-                  onDataChange={setFormData}
-                  template={MOCK_NOTICE_TEMPLATE}
-                />
+                <TemplatePreview data={sampleData} />
               </div>
             </div>
           )}
