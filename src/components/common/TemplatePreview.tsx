@@ -13,16 +13,64 @@ export const TemplatePreview = ({
 
   // documentId가 있으면 TanStack Query에서 해당 데이터 조회
   const cachedData = documentId
-    ? (queryClient.getQueryData(['uploadedTemplateData', documentId]) as
-        | { extractedData?: Record<string, any>; [key: string]: any }
-        | undefined)
+    ? queryClient.getQueryData(['uploadedTemplateData', documentId])
     : null;
 
   // documentId로 조회한 데이터 또는 propData 사용
-  const data = documentId
-    ? cachedData?.extractedData ||
-      (cachedData as Record<string, any> | undefined)
-    : propData;
+  const rawData = (documentId ? cachedData : propData) as Record<
+    string,
+    any
+  > | null;
+
+  const sourceNode =
+    rawData?.extractedData || rawData?.extracted_data || rawData;
+
+  const data = sourceNode
+    ? {
+        ...sourceNode,
+        noticeNumber: sourceNode.noticeNumber || '2025-00123',
+        projectName: sourceNode.project_name || sourceNode.projectName || '',
+        contractPeriod: sourceNode.delivery_deadline_days
+          ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+          : sourceNode.contractPeriod || '',
+        estimated_amount: sourceNode.total_budget_vat
+          ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
+          : sourceNode.estimated_amount || '0',
+        contactPhone: sourceNode.contactPhone || '032-590-4000',
+        contactName: sourceNode.contactName || '담당자',
+        bidSubmitStart:
+          sourceNode.schedule?.order_request ||
+          sourceNode.bidSubmitStart ||
+          '2025.11.01 10:00',
+        bidSubmitEnd:
+          sourceNode.schedule?.expected_delivery ||
+          sourceNode.bidSubmitEnd ||
+          '2025.11.08 10:00',
+        bidOpenTime: sourceNode.bidOpenTime || '2025.11.08 11:00',
+        bidMethod:
+          sourceNode.procurement_method_raw?.includes('소액수의') ||
+          sourceNode.bidMethod === 'small'
+            ? 'small'
+            : 'general',
+        contractMethod:
+          sourceNode.procurement_method_raw?.includes('제한경쟁') ||
+          sourceNode.contractMethod === 'restricted'
+            ? 'restricted'
+            : 'general',
+        productName: sourceNode.item_name || sourceNode.productName || '',
+        detail_item_codes: sourceNode.detail_item_codes ||
+          sourceNode.detailItemCodes || [''],
+        jointContract:
+          sourceNode.is_joint_contract || sourceNode.jointContract === 'yes'
+            ? 'yes'
+            : 'no',
+        consortiumDeadline: sourceNode.consortiumDeadline || '2025.11.07 18:00',
+        orgName:
+          sourceNode.requesting_department ||
+          sourceNode.orgName ||
+          '한국환경공단',
+      }
+    : null;
 
   if (!data) {
     return (
@@ -39,7 +87,7 @@ export const TemplatePreview = ({
       </div>
 
       <h1 className="text-center text-lg font-bold my-8 border-t-2 border-b-2 border-black py-4">
-        소액수의 견적제출 공고
+        <span className="text-blue-600 font-bold">{data.project_name}</span>
       </h1>
 
       <div className="text-center text-sm mb-8">
@@ -132,7 +180,12 @@ export const TemplatePreview = ({
               <span className="text-blue-600">{data.projectName}</span>
             </strong>
           </p>
-          <p>나. 계약기간 : {data.contractPeriod}</p>
+          <p>
+            나. 계약기간 :{' '}
+            <span className="text-blue-600 font-bold">
+              {data.delivery_deadline_days}일
+            </span>
+          </p>
           <p>
             다. 예 산 액 :
             <strong>
@@ -396,7 +449,7 @@ export const TemplatePreview = ({
 
       <div className="text-center mt-12">
         <p className="mb-4">위와 같이 공고합니다.</p>
-        <p className="text-base  mb-2 ml-[30rem]">2025년 00월 00일</p>
+        <p className="text-base  mb-2 ml-[25rem]">2025년 00월 00일</p>
         <p className="text-xl font-bold">{data.orgName} 계약담당</p>
       </div>
     </div>
