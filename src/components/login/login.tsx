@@ -16,6 +16,7 @@ export function Login() {
     try {
       const result = await loginApi(id, password);
       // TODO: 로그인 성공 후 처리 (예: 페이지 이동)
+      console.log(result);
       navigate('/');
     } catch (error) {
       console.error('Login failed:', error);

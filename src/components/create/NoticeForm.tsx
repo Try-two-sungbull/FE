@@ -12,16 +12,20 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { 
-  FileText, 
-  Upload, 
-  Sparkles, 
+
+import {
+  FileText,
+  Upload,
+  Sparkles,
   CheckCircle2,
   AlertCircle,
   ChevronRight,
   Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useToast } from "@/hooks/use-toast";
+import { useNavigate } from "react-router-dom";
+
 
 interface FormField {
   id: string;
@@ -167,6 +171,8 @@ interface NoticeFormProps {
 export function NoticeForm({ type, subType, onPreview, formData: externalFormData }: NoticeFormProps) {
   const [formData, setFormData] = useState<Record<string, string>>(externalFormData || {});
   const [isUploading, setIsUploading] = useState(false);
+  const { toast } = useToast();
+  const navigate = useNavigate();
 
   // 외부에서 데이터가 변경되면 동기화
   useEffect(() => {
@@ -177,12 +183,12 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
 
   const handleChange = (id: string, value: string) => {
     const newData = { ...formData, [id]: value };
-    
+
     // 금액에 따른 자동 기업 제한 설정
     if (id === "amount") {
       const amount = parseInt(value.replace(/,/g, "")) || 0;
       const amountExcludingVat = amount / 1.1; // 부가세 제외 금액
-      
+
       if (amountExcludingVat < 100000000) {
         newData.companyRestriction = "small";
       } else if (amountExcludingVat < 230000000) {
@@ -190,7 +196,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
       } else {
         newData.companyRestriction = "none";
       }
-      
+
       // 금액에 따른 낙찰 방법 자동 설정
       if (amountExcludingVat <= 100000000) {
         newData.bidMethod = "small"; // 소액수의 가능
@@ -198,7 +204,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
         newData.bidMethod = "qualified"; // 적격심사 필수
       }
     }
-    
+
     setFormData(newData);
     onPreview?.(newData);
   };
@@ -227,6 +233,16 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
     }, 2000);
   };
 
+  const handleGenerateNotice = () => {
+    navigate('/loading', {
+      state: {
+        initialData: formData,
+        type: type,
+        subType: subType
+      }
+    });
+  };
+
   const filledCount = Object.values(formData).filter(Boolean).length;
   const requiredFields = formFields.filter((f) => f.required);
   const filledRequired = requiredFields.filter((f) => formData[f.id]).length;
@@ -241,7 +257,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
             <div>
               <h4 className="font-medium text-sm mb-1">파란 글자 항목 안내</h4>
               <p className="text-xs text-muted-foreground">
-                <span className="text-blue-600 font-medium">파란색</span>으로 표시된 항목은 구매계획서에서 자동 추출되어 입찰공고에 반영됩니다. 
+                <span className="text-blue-600 font-medium">파란색</span>으로 표시된 항목은 구매계획서에서 자동 추출되어 입찰공고에 반영됩니다.
                 발주계획서를 업로드하면 해당 항목들이 자동으로 채워집니다.
               </p>
             </div>
@@ -306,8 +322,8 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
           {formFields.map((field) => (
             <div key={field.id} className="space-y-2">
               <div className="flex items-center gap-2 flex-wrap">
-                <Label 
-                  htmlFor={field.id} 
+                <Label
+                  htmlFor={field.id}
                   className={cn(
                     "text-sm font-medium",
                     field.isBlueField && "text-blue-600"
@@ -330,7 +346,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                   </Badge>
                 )}
               </div>
-              
+
               {field.type === "text" && (
                 <Input
                   id={field.id}
@@ -342,7 +358,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                   )}
                 />
               )}
-              
+
               {field.type === "number" && (
                 <div className="relative">
                   <Input
@@ -360,7 +376,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                   </span>
                 </div>
               )}
-              
+
               {field.type === "select" && (
                 <Select
                   value={formData[field.id]}
@@ -380,7 +396,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                   </SelectContent>
                 </Select>
               )}
-              
+
               {field.type === "textarea" && (
                 <Textarea
                   id={field.id}
@@ -393,7 +409,7 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                   )}
                 />
               )}
-              
+
               {field.hint && (
                 <p className="text-xs text-muted-foreground">{field.hint}</p>
               )}
@@ -416,13 +432,18 @@ export function NoticeForm({ type, subType, onPreview, formData: externalFormDat
                 </>
               )}
             </div>
-            <Button className="gap-2" disabled={filledRequired < requiredFields.length}>
+            <Button
+              className="gap-2"
+              disabled={filledRequired < requiredFields.length}
+              onClick={handleGenerateNotice}
+            >
               공고문 생성
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
         </CardContent>
       </Card>
+
     </div>
   );
 }

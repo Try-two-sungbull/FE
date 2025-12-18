@@ -9,6 +9,8 @@ import NotFound from './pages/NotFound';
 import Upload from './pages/Upload';
 import Templates from './pages/Templates';
 import Archive from './pages/Archive';
+import NoticeEditor from './pages/NoticeEditor';
+import NoticeLoading from './pages/NoticeLoading';
 import { TemplatePreview } from './components/common/TemplatePreview';
 
 const sampleData = {
@@ -41,7 +43,9 @@ const App = () => (
           <Route path="/login" element={<Login />} />
           <Route path="/" element={<Index />} />
           <Route path="/create" element={<Index />} />
+          <Route path="/loading" element={<NoticeLoading />} />
           <Route path="/create/upload/:type" element={<Upload />} />
+          <Route path="/editor/:type/:subType" element={<NoticeEditor />} />
           <Route path="/templates" element={<Templates />} />
           <Route path="/archive" element={<Archive />} />
           <Route path="*" element={<NotFound />} />

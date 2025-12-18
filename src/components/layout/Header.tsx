@@ -32,8 +32,7 @@ export function Header() {
             </div>
             <div className="text-left hidden sm:block">
               {/* 회원 정보로 맵핑 */}
-              {/* <p className="text-sm font-medium">관리자</p>
-              <p className="text-xs text-muted-foreground">조달청</p> */}
+              <p className="text-sm font-medium">관리자</p>
             </div>
           </Button>
         </div>
