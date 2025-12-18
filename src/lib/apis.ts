@@ -1,18 +1,24 @@
-import path from 'path';
-
 export async function loginApi(id: string, password: string) {
-  const response = await fetch('/api/login', {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
+  const response = await fetch(
+    `${import.meta.env.VITE_BASE_URL}/auth/sign-in`,
+    {
+      method: 'POST',
       credentials: 'include',
-    },
-    body: JSON.stringify({ id, password }),
-  });
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        username: id,
+        password,
+      }),
+    }
+  );
+  const data = await response.json();
+  console.log(data);
 
   if (!response.ok) {
     throw new Error('Login failed');
   }
 
-  return response.json();
+  return data;
 }

@@ -11,6 +11,7 @@ import { DocumentPreview } from '@/components/create/DocumentPreview';
 import { FileText } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft } from 'lucide-react';
+import { TemplatePreview, MOCK_NOTICE_TEMPLATE } from '@/components/common/TemplatePreview';
 
 type ViewMode = 'dashboard' | 'select-type' | 'create-form';
 
@@ -98,7 +99,7 @@ const Index = () => {
               </div>
 
               {/* Legal Updates */}
-              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              <div className="lg:grid-cols-2 w-full">
                 <LegalUpdates />
               </div>
             </div>
@@ -154,9 +155,11 @@ const Index = () => {
                   onPreview={setFormData}
                   formData={formData}
                 />
-                <DocumentPreview 
-                  data={formData} 
+                <DocumentPreview data={formData} onDataChange={setFormData} />
+                <TemplatePreview
+                  data={formData}
                   onDataChange={setFormData}
+                  template={MOCK_NOTICE_TEMPLATE}
                 />
               </div>
             </div>

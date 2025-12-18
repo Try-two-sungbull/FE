@@ -1,5 +1,5 @@
-import { Button } from "@/components/ui/button";
-import { Bell, Search, User } from "lucide-react";
+import { Button } from '@/components/ui/button';
+import { Bell, Search, User } from 'lucide-react';
 
 export function Header() {
   return (
@@ -23,16 +23,17 @@ export function Header() {
             <Bell className="h-5 w-5" />
             <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-accent rounded-full" />
           </Button>
-          
+
           <div className="w-px h-8 bg-border mx-2" />
-          
+
           <Button variant="ghost" className="gap-2">
             <div className="w-8 h-8 rounded-full bg-primary flex items-center justify-center">
               <User className="h-4 w-4 text-primary-foreground" />
             </div>
             <div className="text-left hidden sm:block">
-              <p className="text-sm font-medium">관리자</p>
-              <p className="text-xs text-muted-foreground">조달청</p>
+              {/* 회원 정보로 맵핑 */}
+              {/* <p className="text-sm font-medium">관리자</p>
+              <p className="text-xs text-muted-foreground">조달청</p> */}
             </div>
           </Button>
         </div>
