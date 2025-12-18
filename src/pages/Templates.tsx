@@ -24,15 +24,16 @@ import {
   Search,
   Plus,
   MoreVertical,
-  Edit,
   Copy,
   Eye,
+  RotateCw,
   Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { Template, TemplateType } from '@/types';
-import { getTemplates, getTemplateById } from '@/lib/apis/template';
+import { getTemplates, getTemplateById, validateTemplate } from '@/lib/apis/template';
 import { DocumentPreview } from '@/components/create/DocumentPreview';
+import { useToast } from '@/hooks/use-toast';
 
 // 카테고리 타입 매핑 (UI용)
 type CategoryType = 'goods' | 'general-service' | 'construction' | 'all';
@@ -48,10 +49,13 @@ const categorySelectLabels: Record<CategoryType, string> = {
 const Templates = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all');
   const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategoryType>('all');
   const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
+  const [validatingTemplateId, setValidatingTemplateId] = useState<number | null>(null);
+  const [validationProgress, setValidationProgress] = useState(0);
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -92,8 +96,79 @@ const Templates = () => {
     return matchesSearch;
   });
 
+  const handleValidateTemplate = async (template: Template) => {
+    let progressInterval: ReturnType<typeof setInterval> | null = null;
+    try {
+      setValidatingTemplateId(template.id);
+      setValidationProgress(0);
+      progressInterval = setInterval(() => {
+        setValidationProgress((current) => Math.min(current + 10, 90));
+      }, 400);
+
+      const response = await validateTemplate(template.template_type);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      setValidationProgress(100);
+
+      const hasChanges = response.has_changes ?? response.changes_detected ?? false;
+      if (response.status === 'unchanged' || !hasChanges) {
+        toast({
+          title: '이미 최신입니다!',
+          description: `${template.template_type} 템플릿에 변경사항이 없습니다.`,
+        });
+        return;
+      }
+
+      const changeItems = response.changes ?? [];
+      toast({
+        title: '변경사항이 있습니다',
+        description: (
+          <div className="space-y-1">
+            {changeItems.map((change, index) => (
+              <div key={`${change.type ?? 'change'}-${index}`} className="text-sm">
+                <span className="font-medium">{change.type ?? '변경'}</span>
+                {change.reason ? (
+                  <span className="text-muted-foreground"> — {change.reason}</span>
+                ) : null}
+              </div>
+            ))}
+          </div>
+        ),
+      });
+    } catch (validateError) {
+      console.error(validateError);
+      if (progressInterval) {
+        clearInterval(progressInterval);
+      }
+      toast({
+        title: '최신화 확인 실패',
+        description: '잠시 후 다시 시도해주세요.',
+      });
+    } finally {
+      setTimeout(() => {
+        setValidatingTemplateId(null);
+        setValidationProgress(0);
+      }, 200);
+    }
+  };
+
   return (
     <div className="flex h-screen bg-background">
+      {validatingTemplateId !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm">
+          <div className="w-full max-w-sm rounded-lg border bg-card p-6 shadow-lg">
+            <div className="text-sm font-medium text-foreground">최신화 확인 중...</div>
+            <div className="mt-3 h-2 w-full rounded-full bg-muted">
+              <div
+                className="h-full rounded-full bg-primary transition-all"
+                style={{ width: `${validationProgress}%` }}
+              />
+            </div>
+            <div className="mt-2 text-xs text-muted-foreground">{validationProgress}%</div>
+          </div>
+        </div>
+      )}
       <Sidebar currentPath={location.pathname} onNavigate={handleNavigate} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
@@ -225,9 +300,15 @@ const Templates = () => {
                           variant="outline"
                           size="sm"
                           className="flex-1 gap-1"
+                          onClick={() => handleValidateTemplate(template)}
+                          disabled={validatingTemplateId === template.id}
                         >
-                          <Edit className="h-3 w-3" />
-                          편집
+                          {validatingTemplateId === template.id ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <RotateCw className="h-3 w-3" />
+                          )}
+                          최신화 확인하기
                         </Button>
                         <Button variant="outline" size="sm" className="gap-1">
                           <Copy className="h-3 w-3" />
