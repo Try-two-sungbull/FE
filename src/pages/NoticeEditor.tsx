@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -22,6 +22,9 @@ import {
   Loader2,
   CheckCircle2,
   XCircle,
+  Edit2,
+  Check,
+  X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
@@ -47,28 +50,108 @@ const NoticeEditor = () => {
     [key: string]: any;
   }>({
     queryKey: ['uploadedTemplateData', state?.documentId],
-    queryFn: () => null, // 클라이언트 상태만 사용하므로 fetch 함수는 null 반환
+    queryFn: () => {
+      // 캐시에서 직접 데이터를 가져옴
+      return (
+        queryClient.getQueryData<{
+          extractedData?: Record<string, string>;
+          [key: string]: any;
+        }>(['uploadedTemplateData', state?.documentId]) || null
+      );
+    },
     enabled: !!state?.documentId,
     staleTime: Infinity,
+    gcTime: Infinity, // 캐시가 삭제되지 않도록 설정
   });
 
-  const [formData, setFormData] = useState<Record<string, string>>({});
+  // 서버 원본 데이터 (기본값)
+  const [originalData, setOriginalData] = useState<Record<string, string>>({});
+  // 사용자가 편집한 필드만 저장 (부분 업데이트)
+  const [editedFields, setEditedFields] = useState<Record<string, string>>({});
+  const [isInitialized, setIsInitialized] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isEditMode, setIsEditMode] = useState(false);
   const [generationStatus, setGenerationStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
 
-  // TanStack Query에서 조회한 데이터 또는 location.state의 데이터로 formData 초기화
+  // 초기 렌더링: 서버에서 받은 원본 데이터 저장 (한 번만)
   useEffect(() => {
+    if (isInitialized) return; // 이미 초기화되었으면 스킵
+
+    // documentData에서 추출
     if (documentData) {
       const extractedData =
         (documentData.extractedData as Record<string, string>) ||
         (documentData as Record<string, string>);
-      setFormData(extractedData);
-    } else if (state?.extractedData) {
-      setFormData(state.extractedData);
+      if (Object.keys(extractedData).length > 0) {
+        setOriginalData(extractedData);
+        setIsInitialized(true);
+        return;
+      }
     }
-  }, [documentData, state?.extractedData]);
+
+    // state에서 추출
+    if (state?.extractedData && Object.keys(state.extractedData).length > 0) {
+      setOriginalData(state.extractedData);
+      setIsInitialized(true);
+      return;
+    }
+
+    // 캐시에서 직접 조회
+    if (state?.documentId) {
+      const cachedData = queryClient.getQueryData([
+        'uploadedTemplateData',
+        state.documentId,
+      ]) as Record<string, any> | null;
+
+      if (cachedData) {
+        const extractedData =
+          (cachedData.extractedData as Record<string, string>) ||
+          (cachedData.extracted_data as Record<string, string>) ||
+          (cachedData as Record<string, string>);
+        if (Object.keys(extractedData).length > 0) {
+          setOriginalData(extractedData);
+          setIsInitialized(true);
+        }
+      }
+    }
+  }, [
+    documentData,
+    state?.extractedData,
+    state?.documentId,
+    isInitialized,
+    queryClient,
+  ]);
+
+  // 서버 원본 데이터 + 편집된 필드 병합 (NoticeForm에 전달할 데이터)
+  const formData = useMemo(() => {
+    // originalData가 비어있으면 빈 객체 반환 (초기화 전)
+    if (Object.keys(originalData).length === 0) {
+      return {};
+    }
+
+    // 값이 채워졌을 때만 병합된 데이터 반환
+    const mergedData = {
+      ...originalData,
+      ...editedFields, // 편집된 필드가 우선
+    };
+
+    // 빈 값이면 원본 값으로 되돌리기 (period 필드 제외)
+    const cleanedData: Record<string, string> = {};
+    Object.keys(mergedData).forEach((key) => {
+      const value = mergedData[key];
+      // period 필드는 빈 값이 유지되고, 다른 필드는 원본으로 복구
+      if (key === 'period') {
+        cleanedData[key] = value || '';
+      } else {
+        cleanedData[key] =
+          value === '' || value === undefined ? originalData[key] || '' : value;
+      }
+    });
+
+    return cleanedData;
+  }, [originalData, editedFields]);
 
   const getTypeLabel = (type?: string) => {
     const labels: Record<string, string> = {
@@ -92,8 +175,172 @@ const NoticeEditor = () => {
   };
 
   const handleFormChange = (data: Record<string, string>) => {
-    setFormData(data);
+    // 모든 변경된 데이터를 editedFields에 저장 (전체 formData를 저장)
+    setEditedFields(data);
   };
+
+  // Preview에 표시할 데이터 생성 (서버 원본 + 편집된 필드 병합)
+  const previewData = useMemo(() => {
+    if (!state?.documentId) return null;
+
+    // 서버 원본 데이터 조회
+    const cachedData = queryClient.getQueryData([
+      'uploadedTemplateData',
+      state.documentId,
+    ]) as Record<string, any> | null;
+
+    if (!cachedData) return null;
+
+    const sourceNode =
+      cachedData?.extractedData || cachedData?.extracted_data || cachedData;
+
+    // 서버 원본 데이터 + 편집된 필드 병합 (editedFields 우선)
+    const mergedData = {
+      ...sourceNode,
+      ...originalData,
+      ...editedFields, // 편집된 필드가 최우선
+    };
+
+    // 필드별 명시적 매핑 (빈 값이면 원본으로 되돌리기, period 제외)
+    const getFieldValue = (
+      editedValue: string | undefined,
+      originalValue: string | undefined,
+      defaultValue: string,
+      isOptional: boolean = false
+    ) => {
+      // isOptional이 true면 빈 값이 유지됨
+      if (isOptional) {
+        return editedValue === undefined ? '' : editedValue;
+      }
+      // 빈 문자열이면 원본 값 사용
+      if (editedValue === '' || editedValue === undefined) {
+        return originalValue || defaultValue;
+      }
+      return editedValue;
+    };
+
+    return {
+      ...mergedData,
+      noticeNumber: getFieldValue(
+        editedFields.noticeNumber,
+        originalData.noticeNumber || sourceNode?.noticeNumber,
+        '2025-00123'
+      ),
+      projectName: getFieldValue(
+        editedFields.title || editedFields.projectName,
+        originalData.title ||
+          originalData.projectName ||
+          sourceNode?.project_name ||
+          sourceNode?.projectName,
+        ''
+      ),
+      contractPeriod: getFieldValue(
+        editedFields.period || editedFields.contractPeriod,
+        originalData.period ||
+          originalData.contractPeriod ||
+          (sourceNode?.delivery_deadline_days
+            ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+            : sourceNode?.contractPeriod),
+        '',
+        true // isOptional: period 필드는 빈 값이 유지됨
+      ),
+      estimated_amount: getFieldValue(
+        editedFields.amount || editedFields.estimated_amount,
+        originalData.amount ||
+          originalData.estimated_amount ||
+          (sourceNode?.total_budget_vat
+            ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
+            : sourceNode?.estimated_amount),
+        '0'
+      ),
+      contactPhone: getFieldValue(
+        editedFields.contactPhone,
+        originalData.contactPhone || sourceNode?.contactPhone,
+        '032-590-4000'
+      ),
+      contactName: getFieldValue(
+        editedFields.contactName,
+        originalData.contactName || sourceNode?.contactName,
+        '담당자'
+      ),
+      bidSubmitStart: getFieldValue(
+        editedFields.bidSubmitStart,
+        originalData.bidSubmitStart ||
+          sourceNode?.schedule?.order_request ||
+          sourceNode?.bidSubmitStart,
+        '2025.11.01 10:00'
+      ),
+      bidSubmitEnd: getFieldValue(
+        editedFields.bidSubmitEnd,
+        originalData.bidSubmitEnd ||
+          sourceNode?.schedule?.expected_delivery ||
+          sourceNode?.bidSubmitEnd,
+        '2025.11.08 10:00'
+      ),
+      bidOpenTime: getFieldValue(
+        editedFields.bidOpenTime,
+        originalData.bidOpenTime || sourceNode?.bidOpenTime,
+        '2025.11.08 11:00'
+      ),
+      bidMethod:
+        editedFields.bidMethod ||
+        originalData.bidMethod ||
+        (sourceNode?.procurement_method_raw?.includes('소액수의') ||
+        sourceNode?.bidMethod === 'small'
+          ? 'small'
+          : 'general'),
+      contractMethod:
+        editedFields.contractMethod ||
+        originalData.contractMethod ||
+        (sourceNode?.procurement_method_raw?.includes('제한경쟁') ||
+        sourceNode?.contractMethod === 'restricted'
+          ? 'restricted'
+          : 'general'),
+      productName: getFieldValue(
+        editedFields.productName,
+        originalData.productName ||
+          sourceNode?.item_name ||
+          sourceNode?.productName,
+        ''
+      ),
+      detail_item_codes: sourceNode?.detail_item_codes ||
+        sourceNode?.detailItemCodes || [''],
+      jointContract:
+        editedFields.jointContract ||
+        originalData.jointContract ||
+        (sourceNode?.is_joint_contract || sourceNode?.jointContract === 'yes'
+          ? 'yes'
+          : 'no'),
+      consortiumDeadline:
+        editedFields.consortiumDeadline ||
+        originalData.consortiumDeadline ||
+        sourceNode?.consortiumDeadline ||
+        '2025.11.07 18:00',
+      orgName: getFieldValue(
+        editedFields.orgName,
+        originalData.orgName ||
+          sourceNode?.requesting_department ||
+          sourceNode?.orgName,
+        '한국환경공단'
+      ),
+      goodsContactInfo:
+        editedFields.goodsContactInfo ||
+        originalData.goodsContactInfo ||
+        'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
+      bidContactInfo:
+        editedFields.bidContactInfo ||
+        originalData.bidContactInfo ||
+        'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
+      noticeDate:
+        editedFields.noticeDate ||
+        originalData.noticeDate ||
+        (sourceNode?.document_date
+          ? sourceNode.document_date.includes('일')
+            ? sourceNode.document_date
+            : `${sourceNode.document_date} 00일`
+          : '2025년 00월 00일'),
+    };
+  }, [originalData, editedFields, state?.documentId, queryClient]);
 
   const handleSave = async () => {
     if (!state?.documentId) {
@@ -121,75 +368,144 @@ const NoticeEditor = () => {
         return;
       }
 
-      // 데이터 변환
+      // 서버 원본 데이터 조회 (캐시에 저장된 원본)
       const sourceNode =
         cachedData?.extractedData || cachedData?.extracted_data || cachedData;
 
-      const previewData = sourceNode
-        ? {
-            ...sourceNode,
-            noticeNumber: sourceNode.noticeNumber || '2025-00123',
-            projectName:
-              sourceNode.project_name || sourceNode.projectName || '',
-            contractPeriod: sourceNode.delivery_deadline_days
-              ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
-              : sourceNode.contractPeriod || '',
-            estimated_amount: sourceNode.total_budget_vat
-              ? new Intl.NumberFormat('ko-KR').format(
-                  sourceNode.total_budget_vat
-                )
-              : sourceNode.estimated_amount || '0',
-            contactPhone: sourceNode.contactPhone || '032-590-4000',
-            contactName: sourceNode.contactName || '담당자',
-            bidSubmitStart:
-              sourceNode.schedule?.order_request ||
-              sourceNode.bidSubmitStart ||
-              '2025.11.01 10:00',
-            bidSubmitEnd:
-              sourceNode.schedule?.expected_delivery ||
-              sourceNode.bidSubmitEnd ||
-              '2025.11.08 10:00',
-            bidOpenTime: sourceNode.bidOpenTime || '2025.11.08 11:00',
-            bidMethod:
-              sourceNode.procurement_method_raw?.includes('소액수의') ||
-              sourceNode.bidMethod === 'small'
-                ? 'small'
-                : 'general',
-            contractMethod:
-              sourceNode.procurement_method_raw?.includes('제한경쟁') ||
-              sourceNode.contractMethod === 'restricted'
-                ? 'restricted'
-                : 'general',
-            productName: sourceNode.item_name || sourceNode.productName || '',
-            detail_item_codes: sourceNode.detail_item_codes ||
-              sourceNode.detailItemCodes || [''],
-            jointContract:
-              sourceNode.is_joint_contract || sourceNode.jointContract === 'yes'
-                ? 'yes'
-                : 'no',
-            consortiumDeadline:
-              sourceNode.consortiumDeadline || '2025.11.07 18:00',
-            orgName:
-              sourceNode.requesting_department ||
-              sourceNode.orgName ||
-              '한국환경공단',
-          }
-        : null;
+      // 서버 원본 + 편집된 필드 병합 (editedFields 우선)
+      const mergedData = {
+        ...sourceNode,
+        ...originalData,
+        ...editedFields, // 편집된 필드가 최우선
+      };
 
-      if (!previewData) {
-        toast({
-          title: '저장 실패',
-          description: '저장할 데이터가 없습니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
+      // 필드별 명시적 매핑
+      const previewData = {
+        ...mergedData,
+        noticeNumber:
+          editedFields.noticeNumber ||
+          originalData.noticeNumber ||
+          sourceNode?.noticeNumber ||
+          '2025-00123',
+        projectName:
+          editedFields.title ||
+          editedFields.projectName ||
+          originalData.title ||
+          originalData.projectName ||
+          sourceNode?.project_name ||
+          sourceNode?.projectName ||
+          '',
+        contractPeriod:
+          editedFields.period ||
+          editedFields.contractPeriod ||
+          originalData.period ||
+          originalData.contractPeriod ||
+          (sourceNode?.delivery_deadline_days
+            ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+            : sourceNode?.contractPeriod || ''),
+        estimated_amount:
+          editedFields.amount ||
+          editedFields.estimated_amount ||
+          originalData.amount ||
+          originalData.estimated_amount ||
+          (sourceNode?.total_budget_vat
+            ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
+            : sourceNode?.estimated_amount || '0'),
+        contactPhone:
+          editedFields.contactPhone ||
+          originalData.contactPhone ||
+          sourceNode?.contactPhone ||
+          '032-590-4000',
+        contactName:
+          editedFields.contactName ||
+          originalData.contactName ||
+          sourceNode?.contactName ||
+          '담당자',
+        bidSubmitStart:
+          editedFields.bidSubmitStart ||
+          originalData.bidSubmitStart ||
+          sourceNode?.schedule?.order_request ||
+          sourceNode?.bidSubmitStart ||
+          '2025.11.01 10:00',
+        bidSubmitEnd:
+          editedFields.bidSubmitEnd ||
+          originalData.bidSubmitEnd ||
+          sourceNode?.schedule?.expected_delivery ||
+          sourceNode?.bidSubmitEnd ||
+          '2025.11.08 10:00',
+        bidOpenTime:
+          editedFields.bidOpenTime ||
+          originalData.bidOpenTime ||
+          sourceNode?.bidOpenTime ||
+          '2025.11.08 11:00',
+        bidMethod:
+          editedFields.bidMethod ||
+          originalData.bidMethod ||
+          (sourceNode?.procurement_method_raw?.includes('소액수의') ||
+          sourceNode?.bidMethod === 'small'
+            ? 'small'
+            : 'general'),
+        contractMethod:
+          editedFields.contractMethod ||
+          originalData.contractMethod ||
+          (sourceNode?.procurement_method_raw?.includes('제한경쟁') ||
+          sourceNode?.contractMethod === 'restricted'
+            ? 'restricted'
+            : 'general'),
+        productName:
+          editedFields.productName ||
+          originalData.productName ||
+          sourceNode?.item_name ||
+          sourceNode?.productName ||
+          '',
+        detail_item_codes: sourceNode?.detail_item_codes ||
+          sourceNode?.detailItemCodes || [''],
+        jointContract:
+          editedFields.jointContract ||
+          originalData.jointContract ||
+          (sourceNode?.is_joint_contract || sourceNode?.jointContract === 'yes'
+            ? 'yes'
+            : 'no'),
+        consortiumDeadline:
+          editedFields.consortiumDeadline ||
+          originalData.consortiumDeadline ||
+          sourceNode?.consortiumDeadline ||
+          '2025.11.07 18:00',
+        orgName:
+          editedFields.orgName ||
+          originalData.orgName ||
+          sourceNode?.requesting_department ||
+          sourceNode?.orgName ||
+          '한국환경공단',
+      };
 
-      // ExtractedData 형식으로 변환
+      // ExtractedData 형식으로 변환 (편집된 formData 포함)
       const extractedData = convertToExtractedData(previewData);
 
       // 서버에 저장
-      await saveDocumentApi(state.documentId, extractedData, type, subType);
+      const saveResponse = await saveDocumentApi(
+        state.documentId,
+        extractedData,
+        type,
+        subType
+      );
+
+      // 저장 성공 후에만 캐시 업데이트 (편집된 데이터 반영)
+      if (saveResponse) {
+        queryClient.setQueryData(
+          ['uploadedTemplateData', state.documentId],
+          (oldData: any) => ({
+            ...oldData,
+            ...saveResponse,
+            extractedData, // 편집된 데이터로 업데이트
+            type,
+            subType,
+          })
+        );
+        // 저장 성공 후 편집된 필드를 원본 데이터로 반영
+        setOriginalData(extractedData as Record<string, string>);
+        setEditedFields({}); // 편집된 필드 초기화
+      }
 
       toast({
         title: '💾 저장 완료',
@@ -291,28 +607,91 @@ const NoticeEditor = () => {
                 </div>
               </div>
               <div className="flex gap-2">
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleSave}
-                  className="gap-2"
-                >
-                  <Save className="h-4 w-4" />
-                  저장
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={handleExport}
-                  className="gap-2"
-                >
-                  <FileDown className="h-4 w-4" />
-                  내보내기
-                </Button>
-                <Button size="sm" onClick={handleGenerate} className="gap-2">
-                  <Sparkles className="h-4 w-4" />
-                  최종 생성
-                </Button>
+                {isEditMode ? (
+                  <>
+                    <Button
+                      size="sm"
+                      onClick={() => {
+                        // 완료: editedFields를 formFields id에서 미리보기 필드명으로 매핑
+                        if (Object.keys(editedFields).length > 0) {
+                          const mappedData = { ...editedFields };
+
+                          // formFields id → previewData 필드명 매핑
+                          if (editedFields.title) {
+                            mappedData.projectName = editedFields.title;
+                          }
+                          if (editedFields.period) {
+                            mappedData.contractPeriod = editedFields.period;
+                          }
+                          if (editedFields.amount) {
+                            mappedData.estimated_amount = editedFields.amount;
+                          }
+
+                          setOriginalData((prev) => ({
+                            ...prev,
+                            ...mappedData,
+                          }));
+                        }
+                        setIsEditMode(false);
+                      }}
+                      className="gap-2 bg-success hover:bg-success/90"
+                    >
+                      <Check className="h-4 w-4" />
+                      완료
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => {
+                        // 취소: 편집 내용 버림
+                        setEditedFields({});
+                        setIsEditMode(false);
+                      }}
+                      className="gap-2"
+                    >
+                      <X className="h-4 w-4" />
+                      취소
+                    </Button>
+                  </>
+                ) : (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setIsEditMode(true)}
+                      className="gap-2"
+                    >
+                      <Edit2 className="h-4 w-4" />
+                      편집
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleSave}
+                      className="gap-2"
+                    >
+                      <Save className="h-4 w-4" />
+                      저장
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleExport}
+                      className="gap-2"
+                    >
+                      <FileDown className="h-4 w-4" />
+                      내보내기
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleGenerate}
+                      className="gap-2"
+                    >
+                      <Sparkles className="h-4 w-4" />
+                      최종 생성
+                    </Button>
+                  </>
+                )}
               </div>
             </div>
           </div>
@@ -320,16 +699,17 @@ const NoticeEditor = () => {
           {/* Editor Layout */}
           <div className="flex h-[calc(100vh-8rem)] overflow-hidden">
             {/* Left Panel - Form */}
-            {/* <div className="w-1/2 border-r overflow-auto p-6">
+            <div className="w-1/2 border-r overflow-auto p-6">
               <div className="max-w-2xl mx-auto">
                 <NoticeForm
                   formData={formData}
                   type={type}
                   subType={subType}
                   onPreview={handleFormChange}
+                  isEditMode={isEditMode}
                 />
               </div>
-            </div> */}
+            </div>
 
             {/* Right Panel - Preview */}
             <div className="w-full overflow-auto bg-muted/30 p-6">
@@ -342,7 +722,10 @@ const NoticeEditor = () => {
                     실시간으로 공고문을 확인하세요
                   </p>
                 </div>
-                <TemplatePreview documentId={state?.documentId} />
+                <TemplatePreview
+                  documentId={state?.documentId}
+                  data={previewData}
+                />
               </div>
             </div>
           </div>

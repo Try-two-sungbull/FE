@@ -10,6 +10,7 @@ export function NoticeForm({
   subType,
   onPreview,
   formData: externalFormData,
+  isEditMode = false,
 }: NoticeFormProps) {
   const [formData, setFormData] = useState<Record<string, string>>(
     externalFormData || {}
@@ -63,9 +64,6 @@ export function NoticeForm({
     });
   };
 
-  const requiredFields = formFields.filter((f) => f.required);
-  const filledRequired = requiredFields.filter((f) => formData[f.id]).length;
-
   return (
     <div className="space-y-6">
       <NoticeInfoCard />
@@ -73,9 +71,8 @@ export function NoticeForm({
       <NoticeFormFields
         formData={formData}
         handleChange={handleChange}
-        filledRequired={filledRequired}
-        requiredFieldsCount={requiredFields.length}
         handleGenerateNotice={handleGenerateNotice}
+        isEditMode={isEditMode}
       />
     </div>
   );
