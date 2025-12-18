@@ -25,6 +25,8 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useQueryClient } from '@tanstack/react-query';
+import { saveDocumentApi } from '@/lib/apis/document';
+import { convertToExtractedData } from '@/components/common/TemplatePreview';
 
 interface LocationState {
   documentId?: string;
@@ -40,11 +42,15 @@ const NoticeEditor = () => {
   const state = location.state as LocationState;
 
   // TanStack Query에서 저장된 데이터 조회
-  const documentData = state?.documentId
-    ? (queryClient.getQueryData(['uploadedTemplateData', state.documentId]) as
-        | { extractedData?: Record<string, string>; [key: string]: any }
-        | undefined)
-    : null;
+  const { data: documentData } = useQuery<{
+    extractedData?: Record<string, string>;
+    [key: string]: any;
+  }>({
+    queryKey: ['uploadedTemplateData', state?.documentId],
+    queryFn: () => null, // 클라이언트 상태만 사용하므로 fetch 함수는 null 반환
+    enabled: !!state?.documentId,
+    staleTime: Infinity,
+  });
 
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [isGenerating, setIsGenerating] = useState(false);
@@ -89,11 +95,117 @@ const NoticeEditor = () => {
     setFormData(data);
   };
 
-  const handleSave = () => {
-    toast({
-      title: '💾 저장 완료',
-      description: '공고문이 임시 저장되었습니다.',
-    });
+  const handleSave = async () => {
+    if (!state?.documentId) {
+      toast({
+        title: '저장 실패',
+        description: '문서 ID가 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
+    try {
+      // TanStack Query에서 저장된 데이터 조회
+      const cachedData = queryClient.getQueryData([
+        'uploadedTemplateData',
+        state.documentId,
+      ]) as Record<string, any> | null;
+
+      if (!cachedData) {
+        toast({
+          title: '저장 실패',
+          description: '저장할 데이터가 없습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // 데이터 변환
+      const sourceNode =
+        cachedData?.extractedData || cachedData?.extracted_data || cachedData;
+
+      const previewData = sourceNode
+        ? {
+            ...sourceNode,
+            noticeNumber: sourceNode.noticeNumber || '2025-00123',
+            projectName:
+              sourceNode.project_name || sourceNode.projectName || '',
+            contractPeriod: sourceNode.delivery_deadline_days
+              ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+              : sourceNode.contractPeriod || '',
+            estimated_amount: sourceNode.total_budget_vat
+              ? new Intl.NumberFormat('ko-KR').format(
+                  sourceNode.total_budget_vat
+                )
+              : sourceNode.estimated_amount || '0',
+            contactPhone: sourceNode.contactPhone || '032-590-4000',
+            contactName: sourceNode.contactName || '담당자',
+            bidSubmitStart:
+              sourceNode.schedule?.order_request ||
+              sourceNode.bidSubmitStart ||
+              '2025.11.01 10:00',
+            bidSubmitEnd:
+              sourceNode.schedule?.expected_delivery ||
+              sourceNode.bidSubmitEnd ||
+              '2025.11.08 10:00',
+            bidOpenTime: sourceNode.bidOpenTime || '2025.11.08 11:00',
+            bidMethod:
+              sourceNode.procurement_method_raw?.includes('소액수의') ||
+              sourceNode.bidMethod === 'small'
+                ? 'small'
+                : 'general',
+            contractMethod:
+              sourceNode.procurement_method_raw?.includes('제한경쟁') ||
+              sourceNode.contractMethod === 'restricted'
+                ? 'restricted'
+                : 'general',
+            productName: sourceNode.item_name || sourceNode.productName || '',
+            detail_item_codes: sourceNode.detail_item_codes ||
+              sourceNode.detailItemCodes || [''],
+            jointContract:
+              sourceNode.is_joint_contract || sourceNode.jointContract === 'yes'
+                ? 'yes'
+                : 'no',
+            consortiumDeadline:
+              sourceNode.consortiumDeadline || '2025.11.07 18:00',
+            orgName:
+              sourceNode.requesting_department ||
+              sourceNode.orgName ||
+              '한국환경공단',
+          }
+        : null;
+
+      if (!previewData) {
+        toast({
+          title: '저장 실패',
+          description: '저장할 데이터가 없습니다.',
+          variant: 'destructive',
+        });
+        return;
+      }
+
+      // ExtractedData 형식으로 변환
+      const extractedData = convertToExtractedData(previewData);
+
+      // 서버에 저장
+      await saveDocumentApi(state.documentId, extractedData, type, subType);
+
+      toast({
+        title: '💾 저장 완료',
+        description: '공고문이 서버에 저장되었습니다.',
+      });
+    } catch (error) {
+      console.error('Save error:', error);
+      toast({
+        title: '저장 실패',
+        description:
+          error instanceof Error
+            ? error.message
+            : '서버 저장 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    }
   };
 
   const handleExport = () => {
@@ -171,7 +283,7 @@ const NoticeEditor = () => {
                 </Button>
                 <div>
                   <h1 className="text-xl font-bold text-foreground">
-                    공고문 편집
+                    공고문 미리보기
                   </h1>
                   <p className="text-sm text-muted-foreground">
                     {getTypeLabel(type)} · {getSubTypeLabel(subType)}
@@ -208,7 +320,7 @@ const NoticeEditor = () => {
           {/* Editor Layout */}
           <div className="flex h-[calc(100vh-8rem)] overflow-hidden">
             {/* Left Panel - Form */}
-            <div className="w-1/2 border-r overflow-auto p-6">
+            {/* <div className="w-1/2 border-r overflow-auto p-6">
               <div className="max-w-2xl mx-auto">
                 <NoticeForm
                   formData={formData}
@@ -217,10 +329,10 @@ const NoticeEditor = () => {
                   onPreview={handleFormChange}
                 />
               </div>
-            </div>
+            </div> */}
 
             {/* Right Panel - Preview */}
-            <div className="w-1/2 overflow-auto bg-muted/30 p-6">
+            <div className="w-full overflow-auto bg-muted/30 p-6">
               <div className="max-w-3xl mx-auto">
                 <div className="mb-4">
                   <h2 className="text-lg font-semibold text-foreground">

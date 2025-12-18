@@ -31,14 +31,6 @@ const App = () => (
           <Route path="/templates" element={<Templates />} />
           <Route path="/archive" element={<Archive />} />
           <Route path="*" element={<NotFound />} />
-          <Route
-            path="/test"
-            element={
-              <TemplatePreview
-                data={queryClient.getQueryData(['uploadedTemplateData'])}
-              />
-            }
-          />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>
