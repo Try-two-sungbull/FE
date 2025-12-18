@@ -137,10 +137,10 @@ const TemplateEditor = () => {
                         <div className="w-1/2 border-r overflow-auto p-6">
                             <div className="max-w-2xl mx-auto">
                                 <NoticeForm
-                                    initialData={formData}
+                                    formData={formData}
                                     type={type}
                                     subType={subType}
-                                    onChange={handleFormChange}
+                                    onPreview={handleFormChange}
                                 />
                             </div>
                         </div>

@@ -1,13 +1,51 @@
 import { useQueryClient } from '@tanstack/react-query';
+import { ExtractedData } from '@/types';
 
 interface TemplatePreviewProps {
   data?: Record<string, any>;
   documentId?: string;
+  onSave?: (data: ExtractedData) => void | Promise<void>;
 }
+
+/**
+ * TemplatePreview에서 사용하는 데이터를 ExtractedData 형식으로 변환
+ */
+export const convertToExtractedData = (
+  data: Record<string, any>
+): ExtractedData => {
+  return {
+    title: data.projectName || '',
+    noticeNumber: data.noticeNumber || '',
+    amount: data.estimated_amount || '0',
+    period: data.contractPeriod || '',
+    phone: data.contactPhone || '',
+    manager: data.contactName || '',
+    deadline: data.bidSubmitEnd || '',
+    openingDate: data.bidOpenTime || '',
+    department: data.orgName || '',
+    description: data.productName || '',
+    // 추가 필드들
+    projectName: data.projectName || '',
+    bidSubmitStart: data.bidSubmitStart || '',
+    bidSubmitEnd: data.bidSubmitEnd || '',
+    bidOpenTime: data.bidOpenTime || '',
+    bidMethod: data.bidMethod || '',
+    contractMethod: data.contractMethod || '',
+    productName: data.productName || '',
+    jointContract: data.jointContract || '',
+    consortiumDeadline: data.consortiumDeadline || '',
+    orgName: data.orgName || '',
+    contactPhone: data.contactPhone || '',
+    contactName: data.contactName || '',
+    estimated_amount: data.estimated_amount || '',
+    contractPeriod: data.contractPeriod || '',
+  };
+};
 
 export const TemplatePreview = ({
   data: propData,
   documentId,
+  onSave,
 }: TemplatePreviewProps) => {
   const queryClient = useQueryClient();
 
@@ -87,7 +125,7 @@ export const TemplatePreview = ({
       </div>
 
       <h1 className="text-center text-lg font-bold my-8 border-t-2 border-b-2 border-black py-4">
-        <span className="text-blue-600 font-bold">{data.project_name}</span>
+        물품구매 입찰공고
       </h1>
 
       <div className="text-center text-sm mb-8">
