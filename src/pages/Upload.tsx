@@ -15,7 +15,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { UploadedFile } from '@/types';
-import { uploadDocument } from '@/lib/apis/document';
+import { uploadApi } from '@/lib/apis';
 
 const Upload = () => {
   const navigate = useNavigate();
@@ -111,7 +111,7 @@ const Upload = () => {
       }, 200);
 
       // Call real API
-      const response = await uploadDocument(file);
+      const response = await uploadApi(file);
       clearInterval(progressInterval);
 
       // Transition to processing state
@@ -119,28 +119,34 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'processing',
-                progress: 100,
-              }
+              ...f,
+              status: 'processing',
+              progress: 100,
+            }
             : f
         )
       );
 
       // Simulate AI processing time
-      await new Promise((resolve) => setTimeout(resolve, 1500));
+      await new Promise((resolve) => setTimeout(resolve, 500));
 
       // Update file with server response
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'completed',
-                type: response.type,
-                subType: response.subType,
-                extractedData: response.extractedData,
-              }
+              ...f,
+              status: 'completed',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              type: (type || 'goods') as any, // Use current type from URL or default
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              subType: (response.bidMethod || 'small') as any, // Use bidMethod as subType or default
+              extractedData: {
+                ...response,
+                // Ensure mandatory fields for display are present if API returns different names
+                noticeNumber: response.noticeNumber || '-',
+              },
+            }
             : f
         )
       );
@@ -150,13 +156,13 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'error',
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : '업로드 중 오류가 발생했습니다',
-              }
+              ...f,
+              status: 'error',
+              error:
+                error instanceof Error
+                  ? error.message
+                  : '업로드 중 오류가 발생했습니다',
+            }
             : f
         )
       );
