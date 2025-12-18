@@ -68,7 +68,6 @@ export async function uploadApi(
   }
 
   const url = `${baseUrl}/api/v1/agent/classify`;
-  console.log('Upload URL:', url);
 
   const response = await fetch(
     url,

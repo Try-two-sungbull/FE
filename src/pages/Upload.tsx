@@ -1,4 +1,5 @@
 import { useState, useCallback } from 'react';
+import { useQueryClient } from '@tanstack/react-query';
 import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
@@ -18,6 +19,7 @@ import { UploadedFile } from '@/types';
 import { uploadApi } from '@/lib/apis';
 
 const Upload = () => {
+  const queryClient = useQueryClient();
   const navigate = useNavigate();
   const location = useLocation();
   const { type } = useParams();
@@ -112,6 +114,10 @@ const Upload = () => {
 
       // Call real API
       const response = await uploadApi(file);
+
+      // Save to Query Cache with fileId as key
+      queryClient.setQueryData(['uploadedTemplateData', fileId], response);
+
       clearInterval(progressInterval);
 
       // Transition to processing state
@@ -119,31 +125,38 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'processing',
-              progress: 100,
-            }
+                ...f,
+                status: 'processing',
+                progress: 100,
+              }
             : f
         )
       );
 
-      // Update file with server response
+      // Get data from Query Cache and update file
+      const cachedData = queryClient.getQueryData(['uploadedTemplateData', fileId]);
+
+      // Update file with cached data
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'completed',
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              type: (type || 'goods') as any, // Use current type from URL or default
-              // eslint-disable-next-line @typescript-eslint/no-explicit-any
-              subType: (response.bidMethod || 'small') as any, // Use bidMethod as subType or default
-              extractedData: {
-                ...response,
-                // Ensure mandatory fields for display are present if API returns different names
-                noticeNumber: response.noticeNumber || '-',
-              },
-            }
+                ...f,
+                status: 'completed',
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                type: (type || cachedData?.type || 'goods') as any,
+                // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                subType: (cachedData?.bidMethod || cachedData?.subType || 'small') as any,
+                extractedData: cachedData
+                  ? {
+                      ...cachedData,
+                      // Ensure mandatory fields for display are present if API returns different names
+                      noticeNumber: cachedData.noticeNumber || '-',
+                      title: cachedData.title || '-',
+                      amount: cachedData.amount || '-',
+                    }
+                  : undefined,
+              }
             : f
         )
       );

@@ -1,6 +1,23 @@
-import React from 'react';
+import { useQuery } from '@tanstack/react-query';
 
-export const TemplatePreview = ({ data }) => {
+export const TemplatePreview = ({ data: propData }) => {
+  const { data: cachedData } = useQuery({
+    queryKey: ['uploadedTemplateData'],
+    staleTime: Infinity,
+    gcTime: Infinity,
+    refetchOnMount: false,
+    refetchOnWindowFocus: false,
+  });
+
+  const data = propData || cachedData;
+
+  if (!data) {
+    return (
+      <div className="flex items-center justify-center p-10 text-muted-foreground">
+        데이터가 없습니다.
+      </div>
+    );
+  }
   return (
     <div className="max-w-[210mm] mx-auto bg-white p-10 font-sans text-sm leading-relaxed">
       <div className="text-center text-green-700 text-xs mb-5 font-medium">
@@ -339,6 +356,6 @@ export const TemplatePreview = ({ data }) => {
         <p className="text-base  mb-2 ml-[30rem]">2025년 00월 00일</p>
         <p className="text-xl font-bold">{data.orgName} 계약담당</p>
       </div>
-    </div>
-  );
+    </div >
+  )
 };
