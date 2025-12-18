@@ -13,24 +13,6 @@ import NoticeEditor from './pages/NoticeEditor';
 import NoticeLoading from './pages/NoticeLoading';
 import { TemplatePreview } from './components/common/TemplatePreview';
 
-const sampleData = {
-  noticeNumber: 'N1-20251657-06',
-  title: '2026년도 환경달력 제작',
-  orgName: '한국환경공단',
-  contractPeriod: '계약후 80일',
-  amount: '89,670,000원(부가가치세 포함)',
-  bidSubmitStart: '2025. 09. .(09:00)',
-  bidSubmitEnd: '2025. 09. .(10:00)',
-  bidOpenTime: '2025. 09. .(11:00)',
-  productCode: '4411200201',
-  productName: '달력',
-  contactPhone: '032-590-3020',
-  contactName: '박찬형 대리',
-  contractPhone: '032-590-3274',
-  contractName: '이미선 과장',
-  consortiumDeadline: '2025. 09. .(18:00)',
-};
-
 const queryClient = new QueryClient();
 
 const App = () => (
@@ -49,7 +31,14 @@ const App = () => (
           <Route path="/templates" element={<Templates />} />
           <Route path="/archive" element={<Archive />} />
           <Route path="*" element={<NotFound />} />
-          <Route path="/test" element={<TemplatePreview data={sampleData} />} />
+          <Route
+            path="/test"
+            element={
+              <TemplatePreview
+                data={queryClient.getQueryData(['uploadedTemplateData'])}
+              />
+            }
+          />
         </Routes>
       </BrowserRouter>
     </TooltipProvider>

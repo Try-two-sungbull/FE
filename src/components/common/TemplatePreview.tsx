@@ -1,15 +1,28 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQueryClient } from '@tanstack/react-query';
 
-export const TemplatePreview = ({ data: propData }) => {
-  const { data: cachedData } = useQuery({
-    queryKey: ['uploadedTemplateData'],
-    staleTime: Infinity,
-    gcTime: Infinity,
-    refetchOnMount: false,
-    refetchOnWindowFocus: false,
-  });
+interface TemplatePreviewProps {
+  data?: Record<string, any>;
+  documentId?: string;
+}
 
-  const data = propData || cachedData;
+export const TemplatePreview = ({
+  data: propData,
+  documentId,
+}: TemplatePreviewProps) => {
+  const queryClient = useQueryClient();
+
+  // documentId가 있으면 TanStack Query에서 해당 데이터 조회
+  const cachedData = documentId
+    ? (queryClient.getQueryData(['uploadedTemplateData', documentId]) as
+        | { extractedData?: Record<string, any>; [key: string]: any }
+        | undefined)
+    : null;
+
+  // documentId로 조회한 데이터 또는 propData 사용
+  const data = documentId
+    ? cachedData?.extractedData ||
+      (cachedData as Record<string, any> | undefined)
+    : propData;
 
   if (!data) {
     return (
@@ -45,8 +58,8 @@ export const TemplatePreview = ({ data: propData }) => {
               이 계약은 「국가를 당사자로 하는 계약에 관한 법률」또는
               「지방자치단체를 당사자로 하는 계약에 관한 법률」에 따른
               청렴계약제가 적용됩니다. 입찰자는 반드시 입찰서 제출 시 아래
-              청렴계약서에 관한 내용을 숙지·승낙하여야 하며, 동 내용을 위반한 경우
-              발주기관의 조치에 대해서 어떠한 이의도 제기할 수 없습니다.
+              청렴계약서에 관한 내용을 숙지·승낙하여야 하며, 동 내용을 위반한
+              경우 발주기관의 조치에 대해서 어떠한 이의도 제기할 수 없습니다.
             </p>
           </div>
 
@@ -114,19 +127,31 @@ export const TemplatePreview = ({ data: propData }) => {
         </h2>
         <div className="pl-5 text-sm space-y-2">
           <p>
-            가. 공 고 명 : <strong><span className='text-blue-600'>{data.title}</span></strong>
+            가. 공 고 명 :
+            <strong>
+              <span className="text-blue-600">{data.projectName}</span>
+            </strong>
           </p>
           <p>나. 계약기간 : {data.contractPeriod}</p>
           <p>
-            다. 예 산 액 : <strong><span className='text-blue-600'>{data.amount}</span></strong>
+            다. 예 산 액 :
+            <strong>
+              <span className="text-blue-600">{data.estimated_amount}원</span>
+            </strong>
           </p>
           <p>
             라. 구매범위 : 물품규격서 등 참조(문의 ☎{data.contactPhone},{' '}
             {data.contactName})
           </p>
           <p>
-            마. 전자입찰서 제출기간 : <strong><span className='text-blue-600'>{data.bidSubmitStart}</span></strong> ～{' '}
-            <strong><span className='text-blue-600'>{data.bidSubmitEnd}</span></strong>
+            마. 전자입찰서 제출기간 :{' '}
+            <strong>
+              <span className="text-blue-600">{data.bidSubmitStart}</span>
+            </strong>{' '}
+            ～{' '}
+            <strong>
+              <span className="text-blue-600">{data.bidSubmitEnd}</span>
+            </strong>
           </p>
           <p>
             바. 개찰일시 및 장소 : {data.bidOpenTime},
@@ -159,7 +184,8 @@ export const TemplatePreview = ({ data: propData }) => {
             <>
               <p>
                 <span className="text-blue-600 font-bold">
-                  가. {data.contractMethod === 'general' ? '일반경쟁' : '제한경쟁'}
+                  가.{' '}
+                  {data.contractMethod === 'general' ? '일반경쟁' : '제한경쟁'}
                   (총액), 전자입찰대상 용역입니다.
                 </span>
               </p>
@@ -170,7 +196,10 @@ export const TemplatePreview = ({ data: propData }) => {
               </p>
             </>
           )}
-          <p>※ 공단 물품구매 적격심사세부기준은 공단홈페이지 (http://www.keco.or.kr/)"입찰정보 /집행기준 “ 참고</p>
+          <p>
+            ※ 공단 물품구매 적격심사세부기준은 공단홈페이지
+            (http://www.keco.or.kr/)"입찰정보 /집행기준 “ 참고
+          </p>
           <p>다. 청렴계약이행 서약제 대상입니다.</p>
           <p>
             라. 입찰서는 반드시 국가종합전자조달시스템(www.g2b.go.kr)의
@@ -220,7 +249,8 @@ export const TemplatePreview = ({ data: propData }) => {
               <span className="text-blue-600 font-bold">
                 ❍ 중소기업제품 구매촉진 및 판로지원에 관한법률 제9조 및 동법
                 시행규칙 제5조 규정에 의한 직접생산확인증명서[세부품명번호:{' '}
-                {data.productName}({data.productCode})]제조 또는 공급물품으로 등록된 자
+                {data.productName}({data.detail_item_codes[0]})]제조 또는
+                공급물품으로 등록된 자
               </span>
             </p>
           </div>
@@ -235,9 +265,14 @@ export const TemplatePreview = ({ data: propData }) => {
             날부터 2년이 지나지 아니한 자는 입찰에 참여할 수 없습니다.
           </p>
           <p>
-            라. 「중소기업기본법」 제2조에 따른 <span className="text-blue-600 font-bold">소기업</span> 또는 「소상공인 보호 및
-            지원에 관한 법률」 제2조에 따른 <span className="text-blue-600 font-bold">소상공인</span>으로서
-            <span className="text-blue-600 font-bold">소기업·소상공인확인서</span>를 소지한 업체이어야 합니다.
+            라. 「중소기업기본법」 제2조에 따른{' '}
+            <span className="text-blue-600 font-bold">소기업</span> 또는
+            「소상공인 보호 및 지원에 관한 법률」 제2조에 따른{' '}
+            <span className="text-blue-600 font-bold">소상공인</span>으로서
+            <span className="text-blue-600 font-bold">
+              소기업·소상공인확인서
+            </span>
+            를 소지한 업체이어야 합니다.
           </p>
 
           <div className=" p-3 my-2 ">
@@ -262,12 +297,12 @@ export const TemplatePreview = ({ data: propData }) => {
               </p>
               <p>
                 나. 공동수급체 구성원은 대표사가 참여 지분율이 가장 많아야 하고,
-                대표사를 포함하여 5개사 이하로 구성하여야 하며, 구성원별 계약참여
-                최소 지분율은 10% 이상으로 하여야 합니다.
+                대표사를 포함하여 5개사 이하로 구성하여야 하며, 구성원별
+                계약참여 최소 지분율은 10% 이상으로 하여야 합니다.
               </p>
               <p>
-                다. 공동수급협정서 제출기한: {data.consortiumDeadline}, ※해당자에
-                한함, 나라장터 전자 제출
+                다. 공동수급협정서 제출기한: {data.consortiumDeadline},
+                ※해당자에 한함, 나라장터 전자 제출
               </p>
             </>
           ) : (
@@ -324,10 +359,16 @@ export const TemplatePreview = ({ data: propData }) => {
               ○ 전자입찰이용안내 : 국가종합전자조달시스템 콜센터(☎1588-0800)
             </p>
             <p>
-              ○ 물품 규격 등 관련사항 - <span className="font-bold text-blue-600">oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)</span>
+              ○ 물품 규격 등 관련사항 -{' '}
+              <span className="font-bold text-blue-600">
+                oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)
+              </span>
             </p>
             <p>
-              ○ 입찰․계약 관련사항 : <span className="font-bold text-blue-600">oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)</span>
+              ○ 입찰․계약 관련사항 :{' '}
+              <span className="font-bold text-blue-600">
+                oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)
+              </span>
             </p>
           </div>
         </div>
@@ -335,7 +376,9 @@ export const TemplatePreview = ({ data: propData }) => {
 
       <div className="pt-6 mt-12">
         <div className="bg-blue-100 p-4 border border-black">
-          <h3 className="font-bold mb-2 text-center">이의제기 및 신고채널 안내</h3>
+          <h3 className="font-bold mb-2 text-center">
+            이의제기 및 신고채널 안내
+          </h3>
           <p className="text-xs mb-2">
             ◎ 본 입찰과 관련한 부당행위 또는 부당사례 등과 공단 직원이 금품 및
             향응요구, 지위남용 등 부당한 요구를 할 경우 아래 신고채널을 통해
@@ -356,6 +399,6 @@ export const TemplatePreview = ({ data: propData }) => {
         <p className="text-base  mb-2 ml-[30rem]">2025년 00월 00일</p>
         <p className="text-xl font-bold">{data.orgName} 계약담당</p>
       </div>
-    </div >
-  )
+    </div>
+  );
 };

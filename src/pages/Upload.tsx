@@ -15,7 +15,7 @@ import {
   Download,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { UploadedFile } from '@/types';
+import { UploadedFile, ExtractedData } from '@/types';
 import { uploadApi } from '@/lib/apis';
 
 const Upload = () => {
@@ -112,11 +112,16 @@ const Upload = () => {
         }
       }, 200);
 
-      // Call real API
+      // Call real API to extract data
       const response = await uploadApi(file);
 
-      // Save to Query Cache with fileId as key
+      // Save uploadApi response to TanStack Query
       queryClient.setQueryData(['uploadedTemplateData', fileId], response);
+
+      // Extract data from response
+      const extractedData = response.extractedData || response;
+      const documentType = response.type || type || 'goods';
+      const documentSubType = response.subType || response.bidMethod || 'small';
 
       clearInterval(progressInterval);
 
@@ -133,10 +138,7 @@ const Upload = () => {
         )
       );
 
-      // Get data from Query Cache and update file
-      const cachedData = queryClient.getQueryData(['uploadedTemplateData', fileId]);
-
-      // Update file with cached data
+      // Update file with extracted data
       setFiles((prev) =>
         prev.map((f) =>
           f.id === fileId
@@ -144,18 +146,16 @@ const Upload = () => {
                 ...f,
                 status: 'completed',
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                type: (type || cachedData?.type || 'goods') as any,
+                type: documentType as any,
                 // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                subType: (cachedData?.bidMethod || cachedData?.subType || 'small') as any,
-                extractedData: cachedData
-                  ? {
-                      ...cachedData,
-                      // Ensure mandatory fields for display are present if API returns different names
-                      noticeNumber: cachedData.noticeNumber || '-',
-                      title: cachedData.title || '-',
-                      amount: cachedData.amount || '-',
-                    }
-                  : undefined,
+                subType: documentSubType as any,
+                extractedData: {
+                  ...extractedData,
+                  // Ensure mandatory fields for display are present
+                  noticeNumber: extractedData.noticeNumber || '-',
+                  title: extractedData.title || '-',
+                  amount: extractedData.amount || '-',
+                },
               }
             : f
         )
@@ -166,13 +166,13 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-              ...f,
-              status: 'error',
-              error:
-                error instanceof Error
-                  ? error.message
-                  : '업로드 중 오류가 발생했습니다',
-            }
+                ...f,
+                status: 'error',
+                error:
+                  error instanceof Error
+                    ? error.message
+                    : '업로드 중 오류가 발생했습니다',
+              }
             : f
         )
       );
@@ -184,6 +184,8 @@ const Upload = () => {
     const newFileMap = new Map(actualFiles);
     newFileMap.delete(fileId);
     setActualFiles(newFileMap);
+    // Remove query cache data for this file
+    queryClient.removeQueries({ queryKey: ['uploadedTemplateData', fileId] });
   };
 
   const handleGenerateNotice = (file: UploadedFile) => {
@@ -191,7 +193,6 @@ const Upload = () => {
       navigate(`/editor/${file.type}/${file.subType}`, {
         state: {
           documentId: file.id,
-          extractedData: file.extractedData,
         },
       });
     }
