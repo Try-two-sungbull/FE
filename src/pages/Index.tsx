@@ -1,4 +1,5 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate, useLocation } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { StatCard } from '@/components/dashboard/StatCard';
@@ -34,7 +35,8 @@ const sampleData = {
 };
 
 const Index = () => {
-  const [currentPath, setCurrentPath] = useState('/');
+  const navigate = useNavigate();
+  const location = useLocation();
   const [viewMode, setViewMode] = useState<ViewMode>('dashboard');
   const [selectedType, setSelectedType] = useState<{
     type: string;
@@ -42,15 +44,18 @@ const Index = () => {
   } | null>(null);
   const [formData, setFormData] = useState<Record<string, string>>({});
 
-  const handleNavigate = (path: string) => {
-    setCurrentPath(path);
-    if (path === '/create') {
+  useEffect(() => {
+    if (location.pathname === '/create') {
       setViewMode('select-type');
-    } else if (path === '/') {
+    } else if (location.pathname === '/') {
       setViewMode('dashboard');
       setSelectedType(null);
       setFormData({});
     }
+  }, [location.pathname]);
+
+  const handleNavigate = (path: string) => {
+    navigate(path);
   };
 
   const handleTypeSelect = (type: string, subType: string) => {
@@ -59,8 +64,7 @@ const Index = () => {
   };
 
   const handleQuickAction = (type: string) => {
-    setCurrentPath('/create');
-    setViewMode('select-type');
+    navigate('/create');
   };
 
   const handleBackToSelect = () => {
@@ -70,7 +74,7 @@ const Index = () => {
 
   return (
     <div className="flex h-screen bg-background">
-      <Sidebar currentPath={currentPath} onNavigate={handleNavigate} />
+      <Sidebar currentPath={location.pathname} onNavigate={handleNavigate} />
 
       <div className="flex-1 flex flex-col overflow-hidden">
         <Header />
