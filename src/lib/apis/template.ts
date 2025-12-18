@@ -38,7 +38,7 @@ export async function getTemplates(
  */
 export async function getTemplateById(template_id: number): Promise<TemplateDetail> {
   const response = await fetch(
-    `${import.meta.env.VITE_BASE_URL}/api/v1/agent/templates/${template_id}`,
+    `${import.meta.env.VITE_AI_BASE_URL}/api/v1/agent/templates/${template_id}`,
     {
       method: 'GET',
       credentials: 'include',
