@@ -1,79 +1,95 @@
 import { useState } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import {
   FileText,
   Search,
   Plus,
-  Filter,
   MoreVertical,
   Edit,
   Copy,
-  Trash2,
   Eye,
+  Loader2,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { Template, TemplateType } from '@/types';
+import { getTemplates, getTemplateById } from '@/lib/apis/template';
+import { DocumentPreview } from '@/components/create/DocumentPreview';
 
-interface Template {
-  id: string;
-  name: string;
-  type: string;
-  subType: string;
-  createdAt: string;
-  lastModified: string;
-  usageCount: number;
-}
+// 카테고리 타입 매핑 (UI용)
+type CategoryType = 'goods' | 'general-service' | 'construction' | 'all';
+type SubCategoryType = '소액수의' | '적격심사' | 'all';
 
-const mockTemplates: Template[] = [
-  {
-    id: '1',
-    name: '물품 일반경쟁 기본 템플릿',
-    type: '물품',
-    subType: '일반경쟁',
-    createdAt: '2025-01-15',
-    lastModified: '2025-01-15',
-    usageCount: 24,
-  },
-  {
-    id: '2',
-    name: '용역 제한경쟁 템플릿',
-    type: '용역',
-    subType: '제한경쟁',
-    createdAt: '2025-01-10',
-    lastModified: '2025-01-12',
-    usageCount: 15,
-  },
-  {
-    id: '3',
-    name: '공사 적격심사 템플릿',
-    type: '공사',
-    subType: '적격심사',
-    createdAt: '2025-01-05',
-    lastModified: '2025-01-08',
-    usageCount: 8,
-  },
-];
+const categorySelectLabels: Record<CategoryType, string> = {
+  'goods': '물품',
+  'general-service': '용역',
+  'construction': '공사',
+  'all': '전체',
+};
 
 const Templates = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [searchQuery, setSearchQuery] = useState('');
-  const [selectedType, setSelectedType] = useState<string>('all');
+  const [selectedCategory, setSelectedCategory] = useState<CategoryType>('all');
+  const [selectedSubCategory, setSelectedSubCategory] = useState<SubCategoryType>('all');
+  const [selectedTemplateId, setSelectedTemplateId] = useState<number | null>(null);
 
   const handleNavigate = (path: string) => {
     navigate(path);
   };
 
-  const filteredTemplates = mockTemplates.filter((template) => {
+  // API는 template_type만 받으므로, 서브카테고리를 template_type으로 변환
+  // selectedSubCategory가 'all'이 아니면 해당 값("소액수의" 또는 "적격심사")을 template_type으로 사용
+  const templateType: TemplateType | null = 
+    selectedSubCategory !== 'all' ? (selectedSubCategory as TemplateType) : null;
+
+  // 템플릿 목록 조회 (template_type이 선택된 경우에만)
+  const { data: templatesData, isLoading, error } = useQuery({
+    queryKey: ['templates', templateType],
+    queryFn: () => {
+      if (!templateType) {
+        // template_type이 선택되지 않은 경우, 빈 배열 반환
+        return Promise.resolve({ total: 0, template_type: '소액수의' as TemplateType, templates: [] });
+      }
+      return getTemplates(templateType); // 기본 50개 조회
+    },
+    enabled: true, // 항상 쿼리 활성화 (template_type이 없어도 처리)
+  });
+
+  // 선택된 템플릿 상세 조회
+  const { data: selectedTemplate, isLoading: isLoadingDetail } = useQuery({
+    queryKey: ['template', selectedTemplateId],
+    queryFn: () => getTemplateById(selectedTemplateId!),
+    enabled: !!selectedTemplateId,
+  });
+
+  const templates = templatesData?.templates || [];
+
+  // 필터링 (검색어)
+  const filteredTemplates = templates.filter((template) => {
     const matchesSearch =
-      template.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      template.type.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesType =
-      selectedType === 'all' || template.type === selectedType;
-    return matchesSearch && matchesType;
+      template.template_type.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      template.version.toLowerCase().includes(searchQuery.toLowerCase());
+    return matchesSearch;
   });
 
   return (
@@ -111,122 +127,165 @@ const Templates = () => {
                   className="pl-9"
                 />
               </div>
-              <div className="flex gap-2">
-                <Button
-                  variant={selectedType === 'all' ? 'default' : 'outline'}
-                  onClick={() => setSelectedType('all')}
-                  size="sm"
-                >
-                  전체
-                </Button>
-                <Button
-                  variant={selectedType === '물품' ? 'default' : 'outline'}
-                  onClick={() => setSelectedType('물품')}
-                  size="sm"
-                >
-                  물품
-                </Button>
-                <Button
-                  variant={selectedType === '용역' ? 'default' : 'outline'}
-                  onClick={() => setSelectedType('용역')}
-                  size="sm"
-                >
-                  용역
-                </Button>
-                <Button
-                  variant={selectedType === '공사' ? 'default' : 'outline'}
-                  onClick={() => setSelectedType('공사')}
-                  size="sm"
-                >
-                  공사
-                </Button>
-              </div>
+              <Select
+                value={selectedCategory}
+                onValueChange={(value) => {
+                  setSelectedCategory(value as CategoryType);
+                  // 카테고리를 변경하면 서브카테고리도 초기화
+                  if (value === 'all') {
+                    setSelectedSubCategory('all');
+                  }
+                }}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="카테고리" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">{categorySelectLabels['all']}</SelectItem>
+                  <SelectItem value="goods">{categorySelectLabels['goods']}</SelectItem>
+                  <SelectItem value="general-service">{categorySelectLabels['general-service']}</SelectItem>
+                  <SelectItem value="construction">{categorySelectLabels['construction']}</SelectItem>
+                </SelectContent>
+              </Select>
+              <Select
+                value={selectedSubCategory}
+                onValueChange={(value) => setSelectedSubCategory(value as SubCategoryType)}
+                disabled={selectedCategory === 'all'}
+              >
+                <SelectTrigger className="w-[140px]">
+                  <SelectValue placeholder="서브카테고리" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">전체</SelectItem>
+                  <SelectItem value="소액수의">소액수의</SelectItem>
+                  <SelectItem value="적격심사">적격심사</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+
+            {/* Loading State */}
+            {isLoading && (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            )}
+
+            {/* Error State */}
+            {error && (
+              <div className="text-center py-12">
+                <p className="text-destructive">템플릿 목록을 불러오는 중 오류가 발생했습니다.</p>
+              </div>
+            )}
 
             {/* Templates Grid */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {filteredTemplates.map((template) => (
-                <div
-                  key={template.id}
-                  className="group relative border rounded-lg p-5 hover:shadow-md transition-all bg-card"
-                >
-                  {/* Template Icon */}
-                  <div className="flex items-start justify-between mb-4">
-                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
-                      <FileText className="h-6 w-6 text-primary" />
-                    </div>
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+            {!isLoading && !error && (
+              <>
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                  {filteredTemplates.map((template) => (
+                    <div
+                      key={template.id}
+                      className="group relative border rounded-lg p-5 hover:shadow-md transition-all bg-card"
                     >
-                      <MoreVertical className="h-4 w-4" />
-                    </Button>
-                  </div>
+                      {/* Template Icon */}
+                      <div className="flex items-start justify-between mb-4">
+                        <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center">
+                          <FileText className="h-6 w-6 text-primary" />
+                        </div>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="opacity-0 group-hover:opacity-100 transition-opacity h-8 w-8 p-0"
+                        >
+                          <MoreVertical className="h-4 w-4" />
+                        </Button>
+                      </div>
 
-                  {/* Template Info */}
-                  <div className="space-y-2">
-                    <h3 className="font-semibold text-foreground line-clamp-2">
-                      {template.name}
-                    </h3>
-                    <div className="flex gap-2">
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-primary/10 text-primary">
-                        {template.type}
-                      </span>
-                      <span className="inline-flex items-center px-2 py-1 rounded-md text-xs font-medium bg-secondary text-secondary-foreground">
-                        {template.subType}
-                      </span>
-                    </div>
-                    <div className="text-sm text-muted-foreground space-y-1">
-                      <p>사용 횟수: {template.usageCount}회</p>
-                      <p>최근 수정: {template.lastModified}</p>
-                    </div>
-                  </div>
+                      {/* Template Info */}
+                      <div className="space-y-2">
+                        <h3 className="font-semibold text-foreground text-lg">
+                          {template.template_type} v{template.version}
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          {new Date(template.created_at).toLocaleDateString('ko-KR')}
+                        </p>
+                      </div>
 
-                  {/* Action Buttons */}
-                  <div className="mt-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1"
-                    >
-                      <Eye className="h-3 w-3" />
-                      미리보기
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      className="flex-1 gap-1"
-                    >
-                      <Edit className="h-3 w-3" />
-                      편집
-                    </Button>
-                    <Button variant="outline" size="sm" className="gap-1">
-                      <Copy className="h-3 w-3" />
-                    </Button>
-                  </div>
+                      {/* Action Buttons */}
+                      <div className="mt-4 flex gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1"
+                          onClick={() => setSelectedTemplateId(template.id)}
+                        >
+                          <Eye className="h-3 w-3" />
+                          상세보기
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="flex-1 gap-1"
+                        >
+                          <Edit className="h-3 w-3" />
+                          편집
+                        </Button>
+                        <Button variant="outline" size="sm" className="gap-1">
+                          <Copy className="h-3 w-3" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
-              ))}
-            </div>
 
-            {/* Empty State */}
-            {filteredTemplates.length === 0 && (
-              <div className="text-center py-12">
-                <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                <h3 className="text-lg font-semibold text-foreground mb-2">
-                  템플릿이 없습니다
-                </h3>
-                <p className="text-muted-foreground mb-4">
-                  검색 조건을 변경하거나 새 템플릿을 만들어보세요
-                </p>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />새 템플릿 만들기
-                </Button>
-              </div>
+                {/* Empty State */}
+                {filteredTemplates.length === 0 && (
+                  <div className="text-center py-12">
+                    <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                    <h3 className="text-lg font-semibold text-foreground mb-2">
+                      템플릿이 없습니다
+                    </h3>
+                    <p className="text-muted-foreground mb-4">
+                      검색 조건을 변경하거나 새 템플릿을 만들어보세요
+                    </p>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />새 템플릿 만들기
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         </main>
       </div>
+
+      {/* 템플릿 상세 다이얼로그 */}
+      <Dialog open={!!selectedTemplateId} onOpenChange={(open) => !open && setSelectedTemplateId(null)}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>
+              {selectedTemplate && `${selectedTemplate.template_type} v${selectedTemplate.version}`}
+            </DialogTitle>
+            <DialogDescription>
+              {selectedTemplate && new Date(selectedTemplate.created_at).toLocaleDateString('ko-KR')}
+            </DialogDescription>
+          </DialogHeader>
+          {isLoadingDetail ? (
+            <div className="flex items-center justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : selectedTemplate?.content ? (
+            <div className="mt-4">
+              <div className="prose max-w-none whitespace-pre-wrap bg-muted p-6 rounded-lg">
+                {selectedTemplate.content}
+              </div>
+            </div>
+          ) : (
+            <div className="text-center py-8 text-muted-foreground">
+              템플릿 내용이 없습니다.
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
