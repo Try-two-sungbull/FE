@@ -1,8 +1,9 @@
 import { useState, useCallback } from 'react';
-import { useNavigate, useLocation } from 'react-router-dom';
+import { useNavigate, useLocation, useParams } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
+import { Loading } from '@/components/common/Loading';
 import {
   Upload as UploadIcon,
   FileText,
@@ -19,9 +20,25 @@ import { uploadDocument } from '@/lib/apis/document';
 const Upload = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { type } = useParams();
   const [isDragging, setIsDragging] = useState(false);
   const [files, setFiles] = useState<UploadedFile[]>([]);
   const [actualFiles, setActualFiles] = useState<Map<string, File>>(new Map());
+
+  const getTypeText = (type: string | undefined) => {
+    switch (type) {
+      case 'goods':
+        return '물품 구매';
+      case 'general-service':
+        return '일반용역';
+      case 'tech-service':
+        return '기술용역';
+      case 'construction':
+        return '공사';
+      default:
+        return '문서';
+    }
+  };
 
   const handleNavigate = (path: string) => {
     navigate(path);
@@ -71,15 +88,12 @@ const Upload = () => {
     setActualFiles(newFileMap);
 
     // Upload files to server
-    newFiles.forEach((file) => {
-      uploadFileToServer(file.id);
+    newFiles.forEach((uploadedFile, index) => {
+      uploadFileToServer(uploadedFile.id, fileList[index]);
     });
   };
 
-  const uploadFileToServer = async (fileId: string) => {
-    const file = actualFiles.get(fileId);
-    if (!file) return;
-
+  const uploadFileToServer = async (fileId: string, file: File) => {
     try {
       // Simulate upload progress
       let progress = 0;
@@ -185,7 +199,7 @@ const Upload = () => {
             {/* Page Header */}
             <div>
               <h1 className="text-2xl font-bold text-foreground">
-                문서 업로드
+                {getTypeText(type)} 업로드
               </h1>
               <p className="text-muted-foreground mt-1">
                 발주계획서나 기존 공고문을 업로드하면 AI가 자동으로 정보를
@@ -298,9 +312,13 @@ const Upload = () => {
                           )}
 
                           {file.status === 'processing' && (
-                            <div className="flex items-center gap-2 text-sm text-primary">
-                              <Sparkles className="h-4 w-4 animate-pulse" />
-                              <span>AI가 문서를 분석하고 있습니다...</span>
+                            <div className="py-2">
+                              <Loading
+                                type="ai"
+                                size="sm"
+                                text="AI가 문서를 분석하고 있습니다..."
+                                className="items-start"
+                              />
                             </div>
                           )}
 

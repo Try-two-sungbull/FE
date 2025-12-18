@@ -72,6 +72,10 @@ const Index = () => {
     setSelectedType(null);
   };
 
+  const handleTypeClick = (typeId: string) => {
+    navigate(`/create/upload/${typeId}`);
+  };
+
   return (
     <div className="flex h-screen bg-background">
       <Sidebar currentPath={location.pathname} onNavigate={handleNavigate} />
@@ -146,7 +150,10 @@ const Index = () => {
                   구매 유형과 낙찰 방법을 선택하여 AI 템플릿을 생성하세요
                 </p>
               </div>
-              <TypeSelector onSelect={handleTypeSelect} />
+              <TypeSelector
+                onSelect={handleTypeSelect}
+                onTypeClick={handleTypeClick}
+              />
             </div>
           )}
 

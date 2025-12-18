@@ -1,24 +1,6 @@
 import React from 'react';
 
-const sampleData = {
-  noticeNumber: 'N1-20251657-06',
-  title: '2026년도 환경달력 제작',
-  orgName: '한국환경공단',
-  contractPeriod: '계약후 80일',
-  amount: '89,670,000원(부가가치세 포함)',
-  bidSubmitStart: '2025. 09. .(09:00)',
-  bidSubmitEnd: '2025. 09. .(10:00)',
-  bidOpenTime: '2025. 09. .(11:00)',
-  productCode: '4411200201',
-  productName: '달력',
-  contactPhone: '032-590-3020',
-  contactName: '박찬형 대리',
-  contractPhone: '032-590-3274',
-  contractName: '이미선 과장',
-  consortiumDeadline: '2025. 09. .(18:00)',
-};
-
-export const TemplatePreview = ({ data = sampleData }) => {
+export const TemplatePreview = ({ data }) => {
   return (
     <div className="max-w-[210mm] mx-auto bg-white p-10 font-sans text-sm leading-relaxed">
       <div className="text-center text-green-700 text-xs mb-5 font-medium">
