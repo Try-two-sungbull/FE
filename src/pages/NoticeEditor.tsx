@@ -8,6 +8,13 @@ import { NoticeForm } from '@/components/create/NoticeForm';
 import { DocumentPreview } from '@/components/create/DocumentPreview';
 import { TemplatePreview } from '@/components/common/TemplatePreview';
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -71,6 +78,10 @@ const NoticeEditor = () => {
   const [isInitialized, setIsInitialized] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
   const [isEditMode, setIsEditMode] = useState(false);
+  const [showPreview, setShowPreview] = useState(false);
+  const [selectedFormat, setSelectedFormat] = useState<'hwp' | 'docx' | 'pdf'>(
+    'pdf'
+  );
   const [generationStatus, setGenerationStatus] = useState<
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
@@ -524,13 +535,6 @@ const NoticeEditor = () => {
     }
   };
 
-  const handleExport = () => {
-    toast({
-      title: '📥 내보내기 준비',
-      description: '공고문을 다운로드합니다.',
-    });
-  };
-
   const handleGenerate = async () => {
     setIsGenerating(true);
     setGenerationStatus('loading');
@@ -571,6 +575,19 @@ const NoticeEditor = () => {
         setGenerationStatus('idle');
       }, 2000);
     }
+  };
+
+  const handleGenerateNotice = () => {
+    setShowPreview(true);
+  };
+
+  const handleExport = (format: 'hwp' | 'docx' | 'pdf') => {
+    setSelectedFormat(format);
+    toast({
+      title: '내보내기 준비',
+      description: `공고문을 ${format === 'hwp' ? '한글' : format === 'docx' ? '워드' : 'PDF'} 형식으로 다운로드하고 있습니다.`,
+    });
+    // TODO: 실제 파일 내보내기 로직 구현
   };
 
   return (
@@ -676,7 +693,7 @@ const NoticeEditor = () => {
                     <Button
                       variant="outline"
                       size="sm"
-                      onClick={handleExport}
+                      onClick={() => handleExport(selectedFormat)}
                       className="gap-2"
                     >
                       <FileDown className="h-4 w-4" />
@@ -697,38 +714,99 @@ const NoticeEditor = () => {
           </div>
 
           {/* Editor Layout */}
-          <div className="flex h-[calc(100vh-8rem)] overflow-hidden">
-            {/* Left Panel - Form */}
-            <div className="w-1/2 border-r overflow-auto p-6">
-              <div className="max-w-2xl mx-auto">
-                <NoticeForm
-                  formData={formData}
-                  type={type}
-                  subType={subType}
-                  onPreview={handleFormChange}
-                  isEditMode={isEditMode}
-                />
+          {!showPreview ? (
+            <div className="flex h-[calc(100vh-8rem)] overflow-hidden">
+              {/* Left Panel - Form */}
+              <div className="w-1/2 border-r overflow-auto p-6">
+                <div className="max-w-2xl mx-auto">
+                  <NoticeForm
+                    formData={formData}
+                    type={type}
+                    subType={subType}
+                    onPreview={handleFormChange}
+                    onGenerateNotice={handleGenerateNotice}
+                    isEditMode={isEditMode}
+                  />
+                </div>
+              </div>
+
+              {/* Right Panel - Preview */}
+              <div className="w-full overflow-auto bg-muted/30 p-6">
+                <div className="max-w-3xl mx-auto">
+                  <div className="mb-4">
+                    <h2 className="text-lg font-semibold text-foreground">
+                      미리보기
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      실시간으로 공고문을 확인하세요
+                    </p>
+                  </div>
+                  <TemplatePreview
+                    documentId={state?.documentId}
+                    data={previewData}
+                  />
+                </div>
               </div>
             </div>
-
-            {/* Right Panel - Preview */}
-            <div className="w-full overflow-auto bg-muted/30 p-6">
-              <div className="max-w-3xl mx-auto">
-                <div className="mb-4">
-                  <h2 className="text-lg font-semibold text-foreground">
-                    미리보기
-                  </h2>
-                  <p className="text-sm text-muted-foreground">
-                    실시간으로 공고문을 확인하세요
-                  </p>
+          ) : (
+            /* Full Screen Preview with Export */
+            <div className="h-[calc(100vh-8rem)] overflow-auto bg-white p-6">
+              <div className="max-w-4xl mx-auto">
+                <div className="mb-4 flex items-center justify-between">
+                  <div>
+                    <h2 className="text-lg font-semibold text-foreground">
+                      최종 공고문 미리보기
+                    </h2>
+                    <p className="text-sm text-muted-foreground">
+                      공고문 내용을 확인하고 파일 형식을 선택하여 다운로드하세요
+                    </p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    onClick={() => setShowPreview(false)}
+                    className="gap-2"
+                  >
+                    <ArrowLeft className="h-4 w-4" />
+                    수정하기
+                  </Button>
                 </div>
                 <TemplatePreview
                   documentId={state?.documentId}
                   data={previewData}
                 />
+
+                {/* Export Options - TemplatePreview 외부 */}
+                <div className="mt-8 pt-8 border-t border-gray-300 flex items-center gap-3 justify-center">
+                  <span className="text-sm font-medium text-foreground">
+                    파일 형식 선택:
+                  </span>
+                  <Select
+                    defaultValue={selectedFormat}
+                    onValueChange={(value) => {
+                      setSelectedFormat(value as 'hwp' | 'docx' | 'pdf');
+                    }}
+                  >
+                    <SelectTrigger className="w-32">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="hwp">한글 (.hwp)</SelectItem>
+                      <SelectItem value="docx">워드 (.docx)</SelectItem>
+                      <SelectItem value="pdf">PDF (.pdf)</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => handleExport(selectedFormat)}
+                  >
+                    <FileDown className="h-4 w-4" />
+                    다운로드
+                  </Button>
+                </div>
               </div>
             </div>
-          </div>
+          )}
         </main>
       </div>
 

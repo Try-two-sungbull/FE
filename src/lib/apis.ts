@@ -60,15 +60,17 @@ export async function uploadApi(file: File) {
   const formData = new FormData();
   formData.append('file', file);
 
-  let baseUrl = import.meta.env.VITE_AI_BASE_URL;
+  let baseUrl = import.meta.env.VITE_BASE_URL;
   if (baseUrl && baseUrl.startsWith('=')) {
     baseUrl = baseUrl.slice(1);
   }
 
-  const url = `${baseUrl}/api/v1/agent/classify`;
+  const url = `${baseUrl}/api/agent/classify`;
+  console.log('Uploading to URL:', url);
 
   const response = await fetch(url, {
     method: 'POST',
+    credentials: 'include',
     body: formData,
   });
   if (!response.ok) {
@@ -82,3 +84,20 @@ export async function uploadApi(file: File) {
 
   return data;
 }
+
+// export async function fetchHtml(template_id: string, format: string) {
+//   const response = await fetch(
+//     `${import.meta.env.VITE_BASE_URL}/api/agent/upload`,
+//     {
+//       method: 'POST',
+//       credentials: 'include',
+//     }
+//   );
+//   const data = await response.text();
+//   console.log(data);
+//   if (!response.ok) {
+//     throw new Error('import failed');
+//   }
+
+//   return data;
+// }

@@ -9,9 +9,10 @@ export function NoticeForm({
   type,
   subType,
   onPreview,
+  onGenerateNotice,
   formData: externalFormData,
   isEditMode = false,
-}: NoticeFormProps) {
+}: NoticeFormProps & { onGenerateNotice?: () => void }) {
   const [formData, setFormData] = useState<Record<string, string>>(
     externalFormData || {}
   );
@@ -55,13 +56,17 @@ export function NoticeForm({
   };
 
   const handleGenerateNotice = () => {
-    navigate('/loading', {
-      state: {
-        initialData: formData,
-        type: type,
-        subType: subType,
-      },
-    });
+    if (onGenerateNotice) {
+      onGenerateNotice();
+    } else {
+      navigate('/loading', {
+        state: {
+          initialData: formData,
+          type: type,
+          subType: subType,
+        },
+      });
+    }
   };
 
   return (
