@@ -101,3 +101,21 @@ export async function uploadApi(file: File) {
 
 //   return data;
 // }
+
+export async function getData(sessionId: string) {
+  const response = await fetch(
+    `${import.meta.env.VITE_BASE_URL}/api/v1/agent/classify/${sessionId}`,
+
+    {
+      method: 'GET',
+      credentials: 'include',
+    }
+  );
+  const data = await response.json();
+  console.log(data);
+  if (!response.ok) {
+    throw new Error('get data failed');
+  }
+
+  return data;
+}

@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
-import { useQuery } from '@tanstack/react-query';
 import { Sidebar } from '@/components/layout/Sidebar';
 import { Header } from '@/components/layout/Header';
 import { Button } from '@/components/ui/button';
 import { NoticeForm } from '@/components/create/NoticeForm';
-import { DocumentPreview } from '@/components/create/DocumentPreview';
 import { TemplatePreview } from '@/components/common/TemplatePreview';
 import {
   Select,
@@ -34,9 +32,9 @@ import {
   X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useQueryClient } from '@tanstack/react-query';
 import { saveDocumentApi } from '@/lib/apis/document';
 import { convertToExtractedData } from '@/components/common/TemplatePreview';
+import { getData } from '@/lib/apis';
 
 interface LocationState {
   documentId?: string;
@@ -48,28 +46,10 @@ const NoticeEditor = () => {
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const state = location.state as LocationState;
+  const documentId = state?.documentId;
 
-  // TanStack Query에서 저장된 데이터 조회
-  const { data: documentData } = useQuery<{
-    extractedData?: Record<string, string>;
-    [key: string]: any;
-  }>({
-    queryKey: ['uploadedTemplateData', state?.documentId],
-    queryFn: () => {
-      // 캐시에서 직접 데이터를 가져옴
-      return (
-        queryClient.getQueryData<{
-          extractedData?: Record<string, string>;
-          [key: string]: any;
-        }>(['uploadedTemplateData', state?.documentId]) || null
-      );
-    },
-    enabled: !!state?.documentId,
-    staleTime: Infinity,
-    gcTime: Infinity, // 캐시가 삭제되지 않도록 설정
-  });
+  const [serverData, setServerData] = useState<Record<string, any> | null>(null);
 
   // 서버 원본 데이터 (기본값)
   const [originalData, setOriginalData] = useState<Record<string, string>>({});
@@ -86,54 +66,50 @@ const NoticeEditor = () => {
     'idle' | 'loading' | 'success' | 'error'
   >('idle');
 
-  // 초기 렌더링: 서버에서 받은 원본 데이터 저장 (한 번만)
+  // 초기 렌더링: 서버에서 받은 원본 데이터 저장
   useEffect(() => {
-    if (isInitialized) return; // 이미 초기화되었으면 스킵
+    if (!documentId) return;
+    let cancelled = false;
 
-    // documentData에서 추출
-    if (documentData) {
-      const extractedData =
-        (documentData.extractedData as Record<string, string>) ||
-        (documentData as Record<string, string>);
-      if (Object.keys(extractedData).length > 0) {
-        setOriginalData(extractedData);
-        setIsInitialized(true);
-        return;
-      }
-    }
+    const fetchDocument = async () => {
+      try {
+        const data = await getData(documentId);
+        if (cancelled) return;
+        setServerData(data);
 
-    // state에서 추출
-    if (state?.extractedData && Object.keys(state.extractedData).length > 0) {
-      setOriginalData(state.extractedData);
-      setIsInitialized(true);
-      return;
-    }
+        if (!isInitialized) {
+          const extractedData =
+            (data?.extractedData as Record<string, string>) ||
+            (data?.extracted_data as Record<string, string>) ||
+            (data as Record<string, string>);
 
-    // 캐시에서 직접 조회
-    if (state?.documentId) {
-      const cachedData = queryClient.getQueryData([
-        'uploadedTemplateData',
-        state.documentId,
-      ]) as Record<string, any> | null;
-
-      if (cachedData) {
-        const extractedData =
-          (cachedData.extractedData as Record<string, string>) ||
-          (cachedData.extracted_data as Record<string, string>) ||
-          (cachedData as Record<string, string>);
-        if (Object.keys(extractedData).length > 0) {
-          setOriginalData(extractedData);
-          setIsInitialized(true);
+          if (extractedData && Object.keys(extractedData).length > 0) {
+            setOriginalData(extractedData);
+            setIsInitialized(true);
+          }
         }
+      } catch (error) {
+        if (cancelled) return;
+        console.error('Failed to fetch document data:', error);
+        toast({
+          title: '데이터 불러오기 실패',
+          description:
+            error instanceof Error
+              ? error.message
+              : '서버에서 데이터를 가져오지 못했습니다.',
+          variant: 'destructive',
+        });
+      } finally {
+        // no-op
       }
-    }
-  }, [
-    documentData,
-    state?.extractedData,
-    state?.documentId,
-    isInitialized,
-    queryClient,
-  ]);
+    };
+
+    fetchDocument();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [documentId, isInitialized, toast]);
 
   // 서버 원본 데이터 + 편집된 필드 병합 (NoticeForm에 전달할 데이터)
   const formData = useMemo(() => {
@@ -192,18 +168,14 @@ const NoticeEditor = () => {
 
   // Preview에 표시할 데이터 생성 (서버 원본 + 편집된 필드 병합)
   const previewData = useMemo(() => {
-    if (!state?.documentId) return null;
-
-    // 서버 원본 데이터 조회
-    const cachedData = queryClient.getQueryData([
-      'uploadedTemplateData',
-      state.documentId,
-    ]) as Record<string, any> | null;
-
-    if (!cachedData) return null;
+    if (!documentId && Object.keys(originalData).length === 0) return null;
 
     const sourceNode =
-      cachedData?.extractedData || cachedData?.extracted_data || cachedData;
+      serverData?.extractedData ||
+      serverData?.extracted_data ||
+      serverData ||
+      state?.extractedData ||
+      {};
 
     // 서버 원본 데이터 + 편집된 필드 병합 (editedFields 우선)
     const mergedData = {
@@ -351,10 +323,10 @@ const NoticeEditor = () => {
             : `${sourceNode.document_date} 00일`
           : '2025년 00월 00일'),
     };
-  }, [originalData, editedFields, state?.documentId, queryClient]);
+  }, [documentId, serverData, originalData, editedFields, state?.extractedData]);
 
   const handleSave = async () => {
-    if (!state?.documentId) {
+    if (!documentId) {
       toast({
         title: '저장 실패',
         description: '문서 ID가 없습니다.',
@@ -364,159 +336,25 @@ const NoticeEditor = () => {
     }
 
     try {
-      // TanStack Query에서 저장된 데이터 조회
-      const cachedData = queryClient.getQueryData([
-        'uploadedTemplateData',
-        state.documentId,
-      ]) as Record<string, any> | null;
-
-      if (!cachedData) {
-        toast({
-          title: '저장 실패',
-          description: '저장할 데이터가 없습니다.',
-          variant: 'destructive',
-        });
-        return;
-      }
-
-      // 서버 원본 데이터 조회 (캐시에 저장된 원본)
-      const sourceNode =
-        cachedData?.extractedData || cachedData?.extracted_data || cachedData;
-
-      // 서버 원본 + 편집된 필드 병합 (editedFields 우선)
-      const mergedData = {
-        ...sourceNode,
-        ...originalData,
-        ...editedFields, // 편집된 필드가 최우선
-      };
-
-      // 필드별 명시적 매핑
-      const previewData = {
-        ...mergedData,
-        noticeNumber:
-          editedFields.noticeNumber ||
-          originalData.noticeNumber ||
-          sourceNode?.noticeNumber ||
-          '2025-00123',
-        projectName:
-          editedFields.title ||
-          editedFields.projectName ||
-          originalData.title ||
-          originalData.projectName ||
-          sourceNode?.project_name ||
-          sourceNode?.projectName ||
-          '',
-        contractPeriod:
-          editedFields.period ||
-          editedFields.contractPeriod ||
-          originalData.period ||
-          originalData.contractPeriod ||
-          (sourceNode?.delivery_deadline_days
-            ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
-            : sourceNode?.contractPeriod || ''),
-        estimated_amount:
-          editedFields.amount ||
-          editedFields.estimated_amount ||
-          originalData.amount ||
-          originalData.estimated_amount ||
-          (sourceNode?.total_budget_vat
-            ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
-            : sourceNode?.estimated_amount || '0'),
-        contactPhone:
-          editedFields.contactPhone ||
-          originalData.contactPhone ||
-          sourceNode?.contactPhone ||
-          '032-590-4000',
-        contactName:
-          editedFields.contactName ||
-          originalData.contactName ||
-          sourceNode?.contactName ||
-          '담당자',
-        bidSubmitStart:
-          editedFields.bidSubmitStart ||
-          originalData.bidSubmitStart ||
-          sourceNode?.schedule?.order_request ||
-          sourceNode?.bidSubmitStart ||
-          '2025.11.01 10:00',
-        bidSubmitEnd:
-          editedFields.bidSubmitEnd ||
-          originalData.bidSubmitEnd ||
-          sourceNode?.schedule?.expected_delivery ||
-          sourceNode?.bidSubmitEnd ||
-          '2025.11.08 10:00',
-        bidOpenTime:
-          editedFields.bidOpenTime ||
-          originalData.bidOpenTime ||
-          sourceNode?.bidOpenTime ||
-          '2025.11.08 11:00',
-        bidMethod:
-          editedFields.bidMethod ||
-          originalData.bidMethod ||
-          (sourceNode?.procurement_method_raw?.includes('소액수의') ||
-          sourceNode?.bidMethod === 'small'
-            ? 'small'
-            : 'general'),
-        contractMethod:
-          editedFields.contractMethod ||
-          originalData.contractMethod ||
-          (sourceNode?.procurement_method_raw?.includes('제한경쟁') ||
-          sourceNode?.contractMethod === 'restricted'
-            ? 'restricted'
-            : 'general'),
-        productName:
-          editedFields.productName ||
-          originalData.productName ||
-          sourceNode?.item_name ||
-          sourceNode?.productName ||
-          '',
-        detail_item_codes: sourceNode?.detail_item_codes ||
-          sourceNode?.detailItemCodes || [''],
-        jointContract:
-          editedFields.jointContract ||
-          originalData.jointContract ||
-          (sourceNode?.is_joint_contract || sourceNode?.jointContract === 'yes'
-            ? 'yes'
-            : 'no'),
-        consortiumDeadline:
-          editedFields.consortiumDeadline ||
-          originalData.consortiumDeadline ||
-          sourceNode?.consortiumDeadline ||
-          '2025.11.07 18:00',
-        orgName:
-          editedFields.orgName ||
-          originalData.orgName ||
-          sourceNode?.requesting_department ||
-          sourceNode?.orgName ||
-          '한국환경공단',
-      };
-
       // ExtractedData 형식으로 변환 (편집된 formData 포함)
       const extractedData = convertToExtractedData(previewData);
 
       // 서버에 저장
       const saveResponse = await saveDocumentApi(
-        state.documentId,
+        documentId,
         extractedData,
         type,
         subType
       );
 
-      // 저장 성공 후에만 캐시 업데이트 (편집된 데이터 반영)
-      if (saveResponse) {
-        queryClient.setQueryData(
-          ['uploadedTemplateData', state.documentId],
-          (oldData: any) => ({
-            ...oldData,
-            ...saveResponse,
-            extractedData, // 편집된 데이터로 업데이트
-            type,
-            subType,
-          })
-        );
-        // 저장 성공 후 편집된 필드를 원본 데이터로 반영
-        setOriginalData(extractedData as Record<string, string>);
-        setEditedFields({}); // 편집된 필드 초기화
-      }
+      // 저장 성공 후 편집된 필드를 원본 데이터로 반영
+      setOriginalData(extractedData as Record<string, string>);
+      setServerData((prev) => ({
+        ...(prev || {}),
+        ...saveResponse,
+        extractedData,
+      }));
+      setEditedFields({}); // 편집된 필드 초기화
 
       toast({
         title: '💾 저장 완료',
@@ -741,10 +579,7 @@ const NoticeEditor = () => {
                       실시간으로 공고문을 확인하세요
                     </p>
                   </div>
-                  <TemplatePreview
-                    documentId={state?.documentId}
-                    data={previewData}
-                  />
+                  <TemplatePreview documentId={documentId} data={previewData} />
                 </div>
               </div>
             </div>
@@ -770,10 +605,7 @@ const NoticeEditor = () => {
                     수정하기
                   </Button>
                 </div>
-                <TemplatePreview
-                  documentId={state?.documentId}
-                  data={previewData}
-                />
+                <TemplatePreview documentId={documentId} data={previewData} />
 
                 {/* Export Options - TemplatePreview 외부 */}
                 <div className="mt-8 pt-8 border-t border-gray-300 flex items-center gap-3 justify-center">
