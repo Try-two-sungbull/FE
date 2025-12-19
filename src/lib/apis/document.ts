@@ -36,8 +36,8 @@ export async function saveDocumentApi(
 ): Promise<{ id: string; success: boolean }> {
   const baseUrl = import.meta.env.VITE_BASE_URL || '';
 
-  const response = await fetch(`${baseUrl}/api/documents/${documentId}`, {
-    method: 'POST',
+  const response = await fetch(`${baseUrl}/api/v1/agent/classify/${documentId}`, {
+    method: 'PATCH',
     credentials: 'include',
     headers: {
       'Content-Type': 'application/json',

@@ -34,7 +34,7 @@ import {
   X,
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { saveDocumentApi } from '@/lib/apis/document';
+import { saveDocumentApi } from '@/lib/apis';
 // convertToExtractedData import is not used anymore in this file, or is it? It was imported.
 import { convertToExtractedData } from '@/components/common/TemplatePreview';
 import { generateDocumentApi, downloadDocument } from '@/lib/apis';
@@ -49,13 +49,13 @@ interface LocationState {
 
 
 const NoticeEditor = () => {
-  const { type, subType } = useParams<{ type: string; subType: string }>();
+  const { type, subType, documentId: paramDocumentId } = useParams<{ type: string; subType: string; documentId?: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const state = location.state as LocationState;
-  const documentId = state?.documentId;
+  const documentId = paramDocumentId || state?.documentId;
 
   const [serverData, setServerData] = useState<Record<string, any> | null>(null);
 
@@ -378,9 +378,6 @@ const NoticeEditor = () => {
       // 서버에 저장
       const saveResponse = await saveDocumentApi(
         documentId,
-        extractedData,
-        type,
-        subType
       );
 
       // 저장 성공 후 편집된 필드를 원본 데이터로 반영
@@ -441,8 +438,8 @@ const NoticeEditor = () => {
       const response = await generateDocumentApi({
         extracted_data: previewData as Record<string, unknown>, // or serverData?.extractedData?
         classification,
-        template_id: state.templateId,
-        format: 'markdown',
+        template_id: 1,
+        format: 'pdf',
         html: htmlString,
       });
 
@@ -510,16 +507,11 @@ const NoticeEditor = () => {
 
       const classification = serverData?.classification || { type, subType };
 
-      const response = await generateDocumentApi({
-        extracted_data: previewData as Record<string, unknown>,
-        classification,
-        template_id: 6,
-        format: format,
-        html: htmlString,
-      });
 
       // Download file
-      downloadDocument(response);
+      await saveDocumentApi(
+        documentId
+      );
 
       setGenerationStatus('success');
       toast({

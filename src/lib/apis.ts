@@ -223,3 +223,16 @@ export function downloadDocument(response: GenerateDocumentResponse) {
     URL.revokeObjectURL(url);
   }
 }
+
+export async function saveDocumentApi(filename: string) {
+  const response = await fetch(`${import.meta.env.VITE_BASE_URL}/convert/save`, {
+    method: 'POST',
+    credentials: 'include',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(filename),
+  });
+  const data = await response.json();
+  return data;
+}

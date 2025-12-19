@@ -194,7 +194,7 @@ const Upload = () => {
 
   const handleGenerateNotice = (file: UploadedFile) => {
     if (file.type && file.subType && file.extractedData) {
-      navigate(`/editor/${file.type}/${file.subType}`, {
+      navigate(`/editor/${file.type}/${file.subType}/${file.id}`, {
         state: {
           documentId: file.id,
           templateId: file.template_id,
