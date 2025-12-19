@@ -46,6 +46,8 @@ export interface UploadedFile {
     type?: PurchaseType;
     subType?: PurchaseSubType;
     extractedData?: ExtractedData;
+    template_id?: number;
+    session_id?: string;
     error?: string;
 }
 

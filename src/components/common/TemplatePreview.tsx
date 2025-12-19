@@ -65,90 +65,94 @@ export const TemplatePreview = ({
 
   const data = sourceNode
     ? {
-        ...sourceNode,
-        noticeNumber:
-          propData?.noticeNumber || sourceNode.noticeNumber || '2025-00123',
-        projectName:
-          propData?.projectName ||
-          sourceNode.project_name ||
-          sourceNode.projectName ||
-          '',
-        contractPeriod:
-          propData?.contractPeriod ||
-          (sourceNode.delivery_deadline_days
-            ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
-            : sourceNode.contractPeriod || ''),
-        estimated_amount:
-          propData?.estimated_amount ||
-          (sourceNode.total_budget_vat
-            ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
-            : sourceNode.estimated_amount || '0'),
-        contactPhone:
-          propData?.contactPhone || sourceNode.contactPhone || '032-590-4000',
-        contactName:
-          propData?.contactName || sourceNode.contactName || '담당자',
-        bidSubmitStart:
-          propData?.bidSubmitStart ||
-          sourceNode.schedule?.order_request ||
-          sourceNode.bidSubmitStart ||
-          '2025.11.01 10:00',
-        bidSubmitEnd:
-          propData?.bidSubmitEnd ||
-          sourceNode.schedule?.expected_delivery ||
-          sourceNode.bidSubmitEnd ||
-          '2025.11.08 10:00',
-        bidOpenTime:
-          propData?.bidOpenTime || sourceNode.bidOpenTime || '2025.11.08 11:00',
-        bidMethod:
-          propData?.bidMethod ||
-          (sourceNode.procurement_method_raw?.includes('소액수의') ||
+      ...sourceNode,
+      noticeNumber:
+        propData?.noticeNumber || sourceNode.noticeNumber || '2025-00123',
+      projectName:
+        propData?.projectName ||
+        sourceNode.project_name ||
+        sourceNode.projectName ||
+        '',
+      contractPeriod:
+        propData?.contractPeriod ||
+        (sourceNode.delivery_deadline_days
+          ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+          : sourceNode.contractPeriod || ''),
+      estimated_amount:
+        propData?.estimated_amount ||
+        (sourceNode.total_budget_vat
+          ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
+          : sourceNode.estimated_amount || '0'),
+      contactPhone:
+        propData?.contactPhone || sourceNode.contactPhone || '032-590-4000',
+      contactName:
+        propData?.contactName || sourceNode.contactName || '담당자',
+      bidSubmitStart:
+        propData?.bidSubmitStart ||
+        sourceNode.schedule?.order_request ||
+        sourceNode.bidSubmitStart ||
+        '2025.11.01 10:00',
+      bidSubmitEnd:
+        propData?.bidSubmitEnd ||
+        sourceNode.schedule?.expected_delivery ||
+        sourceNode.bidSubmitEnd ||
+        '2025.11.08 10:00',
+      bidOpenTime:
+        propData?.bidOpenTime || sourceNode.bidOpenTime || '2025.11.08 11:00',
+      bidMethod:
+        propData?.bidMethod ||
+        (sourceNode.procurement_method_raw?.includes('소액수의') ||
           sourceNode.bidMethod === 'small'
-            ? 'small'
-            : 'general'),
-        contractMethod:
-          propData?.contractMethod ||
-          (sourceNode.procurement_method_raw?.includes('제한경쟁') ||
+          ? 'small'
+          : 'general'),
+      contractMethod:
+        propData?.contractMethod ||
+        (sourceNode.procurement_method_raw?.includes('제한경쟁') ||
           sourceNode.contractMethod === 'restricted'
-            ? 'restricted'
-            : 'general'),
-        productName:
-          propData?.productName ||
-          sourceNode.item_name ||
-          sourceNode.productName ||
-          '',
-        detail_item_codes: sourceNode.detail_item_codes ||
-          sourceNode.detailItemCodes || [''],
-        jointContract:
-          propData?.jointContract ||
-          (sourceNode.is_joint_contract || sourceNode.jointContract === 'yes'
-            ? 'yes'
-            : 'no'),
-        consortiumDeadline:
-          propData?.consortiumDeadline ||
-          sourceNode.consortiumDeadline ||
-          '2025.11.07 18:00',
-        orgName:
-          propData?.orgName ||
-          sourceNode.requesting_department ||
-          sourceNode.orgName ||
-          '한국환경공단',
-        noticeDate:
-          propData?.noticeDate ||
-          sourceNode.noticeDate ||
-          (sourceNode.document_date
-            ? sourceNode.document_date.includes('일')
-              ? sourceNode.document_date
-              : `${sourceNode.document_date} 00일`
-            : '2025년 00월 00일'),
-        goodsContactInfo:
-          propData?.goodsContactInfo ||
-          sourceNode.goodsContactInfo ||
-          'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
-        bidContactInfo:
-          propData?.bidContactInfo ||
-          sourceNode.bidContactInfo ||
-          'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
-      }
+          ? 'restricted'
+          : 'general'),
+      productName:
+        propData?.productName ||
+        sourceNode.item_name ||
+        sourceNode.productName ||
+        '',
+      detail_item_codes: sourceNode.detail_item_codes ||
+        sourceNode.detailItemCodes || [''],
+      jointContract:
+        propData?.jointContract ||
+        (sourceNode.is_joint_contract || sourceNode.jointContract === 'yes'
+          ? 'yes'
+          : 'no'),
+      consortiumDeadline:
+        propData?.consortiumDeadline ||
+        sourceNode.consortiumDeadline ||
+        '2025.11.07 18:00',
+      orgName:
+        propData?.orgName ||
+        sourceNode.requesting_department ||
+        sourceNode.orgName ||
+        '한국환경공단',
+      noticeDate:
+        propData?.noticeDate ||
+        sourceNode.noticeDate ||
+        (sourceNode.document_date
+          ? sourceNode.document_date.includes('일')
+            ? sourceNode.document_date
+            : `${sourceNode.document_date} 00일`
+          : new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })),
+      goodsContactInfo:
+        propData?.goodsContactInfo ||
+        sourceNode.goodsContactInfo ||
+        'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
+      bidContactInfo:
+        propData?.bidContactInfo ||
+        sourceNode.bidContactInfo ||
+        'oooo처 ooo부(☎ oooo-oooo-oooo, 담당 : oooo)',
+    }
     : null;
 
   if (!data) {

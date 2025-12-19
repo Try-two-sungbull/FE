@@ -14,55 +14,55 @@ interface LegalUpdate {
 }
 
 const updates: LegalUpdate[] = [
-  // api 통신해서 실제 데이터 가져올거
-  // {
-  //   id: '1',
-  //   title: '국가계약법 시행령 일부 개정',
-  //   source: '기획재정부',
-  //   date: '2024.01.15',
-  //   impact: 'high',
-  //   description: '적격심사 기준 변경 - 물품구매 가격점수 배점 조정',
-  // },
-  // {
-  //   id: '2',
-  //   title: '계약예규 개정 공포',
-  //   source: '조달청',
-  //   date: '2024.01.10',
-  //   impact: 'medium',
-  //   description: '소액수의계약 기준금액 상향 조정',
-  // },
-  // {
-  //   id: '3',
-  //   title: '공공조달 지침 안내',
-  //   source: '조달청',
-  //   date: '2024.01.05',
-  //   impact: 'low',
-  //   description: '2024년 공공조달 주요 정책방향 안내',
-  // },
-  // {
-  //   id: '4  ',
-  //   title: '국가계약법 시행령 일부 개정',
-  //   source: '기획재정부',
-  //   date: '2024.01.15',
-  //   impact: 'high',
-  //   description: '적격심사 기준 변경 - 물품구매 가격점수 배점 조정',
-  // },
-  // {
-  //   id: '5',
-  //   title: '계약예규 개정 공포',
-  //   source: '조달청',
-  //   date: '2024.01.10',
-  //   impact: 'medium',
-  //   description: '소액수의계약 기준금액 상향 조정',
-  // },
-  // {
-  //   id: '6',
-  //   title: '공공조달 지침 안내',
-  //   source: '조달청',
-  //   date: '2024.01.05',
-  //   impact: 'low',
-  //   description: '2024년 공공조달 주요 정책방향 안내',
-  // },
+  //api 통신해서 실제 데이터 가져올거
+  {
+    id: '1',
+    title: '국가계약법 시행령 일부 개정',
+    source: '기획재정부',
+    date: '2024.01.15',
+    impact: 'high',
+    description: '적격심사 기준 변경 - 물품구매 가격점수 배점 조정',
+  },
+  {
+    id: '2',
+    title: '계약예규 개정 공포',
+    source: '조달청',
+    date: '2024.01.10',
+    impact: 'medium',
+    description: '소액수의계약 기준금액 상향 조정',
+  },
+  {
+    id: '3',
+    title: '공공조달 지침 안내',
+    source: '조달청',
+    date: '2024.01.05',
+    impact: 'low',
+    description: '2024년 공공조달 주요 정책방향 안내',
+  },
+  {
+    id: '4  ',
+    title: '국가계약법 시행령 일부 개정',
+    source: '기획재정부',
+    date: '2024.01.15',
+    impact: 'high',
+    description: '적격심사 기준 변경 - 물품구매 가격점수 배점 조정',
+  },
+  {
+    id: '5',
+    title: '계약예규 개정 공포',
+    source: '조달청',
+    date: '2024.01.10',
+    impact: 'medium',
+    description: '소액수의계약 기준금액 상향 조정',
+  },
+  {
+    id: '6',
+    title: '공공조달 지침 안내',
+    source: '조달청',
+    date: '2024.01.05',
+    impact: 'low',
+    description: '2024년 공공조달 주요 정책방향 안내',
+  },
 ];
 
 const impactConfig = {

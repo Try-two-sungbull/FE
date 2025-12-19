@@ -1,3 +1,5 @@
+import { useQueryClient, QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { renderToStaticMarkup } from 'react-dom/server';
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useLocation, useNavigate } from 'react-router-dom';
 import { Sidebar } from '@/components/layout/Sidebar';
@@ -33,19 +35,25 @@ import {
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { saveDocumentApi } from '@/lib/apis/document';
+// convertToExtractedData import is not used anymore in this file, or is it? It was imported.
 import { convertToExtractedData } from '@/components/common/TemplatePreview';
-import { getData } from '@/lib/apis';
+import { generateDocumentApi, downloadDocument } from '@/lib/apis';
 
 interface LocationState {
   documentId?: string;
   extractedData?: Record<string, string>;
+  templateId?: number;
 }
+
+
+
 
 const NoticeEditor = () => {
   const { type, subType } = useParams<{ type: string; subType: string }>();
   const location = useLocation();
   const navigate = useNavigate();
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const state = location.state as LocationState;
   const documentId = state?.documentId;
 
@@ -73,18 +81,41 @@ const NoticeEditor = () => {
 
     const fetchDocument = async () => {
       try {
-        const data = await getData(documentId);
+        // API 대신 TanStack Query 캐시에서 데이터 조회
+        const data = queryClient.getQueryData(['uploadedTemplateData', documentId]);
+
         if (cancelled) return;
-        setServerData(data);
+
+        if (!data) {
+          throw new Error('데이터를 찾을 수 없습니다. 다시 업로드해주세요.');
+        }
+
+        setServerData(data as Record<string, any>);
 
         if (!isInitialized) {
           const extractedData =
-            (data?.extractedData as Record<string, string>) ||
-            (data?.extracted_data as Record<string, string>) ||
+            ((data as any)?.extractedData as Record<string, string>) ||
+            ((data as any)?.extracted_data as Record<string, string>) ||
             (data as Record<string, string>);
 
           if (extractedData && Object.keys(extractedData).length > 0) {
-            setOriginalData(extractedData);
+            // Map keys from snake_case (server) to camelCase (client components)
+            const mappedData: Record<string, string> = {
+              ...extractedData,
+              title: extractedData.project_name || extractedData.title,
+              productName: extractedData.item_name || extractedData.productName,
+              // amount needs to be formatted or just string. Let's use total_budget_vat as primary.
+              amount: extractedData.total_budget_vat
+                ? new Intl.NumberFormat('ko-KR').format(Number(extractedData.total_budget_vat))
+                : extractedData.estimated_amount
+                  ? new Intl.NumberFormat('ko-KR').format(Number(extractedData.estimated_amount))
+                  : '',
+              period: extractedData.delivery_deadline_days
+                ? `계약체결일로부터 ${extractedData.delivery_deadline_days}일`
+                : extractedData.contract_period || extractedData.period,
+              // Add other mappings if needed
+            };
+            setOriginalData(mappedData);
             setIsInitialized(true);
           }
         }
@@ -96,9 +127,10 @@ const NoticeEditor = () => {
           description:
             error instanceof Error
               ? error.message
-              : '서버에서 데이터를 가져오지 못했습니다.',
+              : '캐시된 데이터를 가져오지 못했습니다.',
           variant: 'destructive',
         });
+        // 데이터가 없으면 업로드 페이지로 이동 유도 가능
       } finally {
         // no-op
       }
@@ -109,7 +141,7 @@ const NoticeEditor = () => {
     return () => {
       cancelled = true;
     };
-  }, [documentId, isInitialized, toast]);
+  }, [documentId, isInitialized, toast, queryClient]);
 
   // 서버 원본 데이터 + 편집된 필드 병합 (NoticeForm에 전달할 데이터)
   const formData = useMemo(() => {
@@ -212,28 +244,28 @@ const NoticeEditor = () => {
       projectName: getFieldValue(
         editedFields.title || editedFields.projectName,
         originalData.title ||
-          originalData.projectName ||
-          sourceNode?.project_name ||
-          sourceNode?.projectName,
+        originalData.projectName ||
+        sourceNode?.project_name ||
+        sourceNode?.projectName,
         ''
       ),
       contractPeriod: getFieldValue(
         editedFields.period || editedFields.contractPeriod,
         originalData.period ||
-          originalData.contractPeriod ||
-          (sourceNode?.delivery_deadline_days
-            ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
-            : sourceNode?.contractPeriod),
+        originalData.contractPeriod ||
+        (sourceNode?.delivery_deadline_days
+          ? `계약체결일로부터 ${sourceNode.delivery_deadline_days}일`
+          : sourceNode?.contractPeriod),
         '',
         true // isOptional: period 필드는 빈 값이 유지됨
       ),
       estimated_amount: getFieldValue(
         editedFields.amount || editedFields.estimated_amount,
         originalData.amount ||
-          originalData.estimated_amount ||
-          (sourceNode?.total_budget_vat
-            ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
-            : sourceNode?.estimated_amount),
+        originalData.estimated_amount ||
+        (sourceNode?.total_budget_vat
+          ? new Intl.NumberFormat('ko-KR').format(sourceNode.total_budget_vat)
+          : sourceNode?.estimated_amount),
         '0'
       ),
       contactPhone: getFieldValue(
@@ -249,15 +281,15 @@ const NoticeEditor = () => {
       bidSubmitStart: getFieldValue(
         editedFields.bidSubmitStart,
         originalData.bidSubmitStart ||
-          sourceNode?.schedule?.order_request ||
-          sourceNode?.bidSubmitStart,
+        sourceNode?.schedule?.order_request ||
+        sourceNode?.bidSubmitStart,
         '2025.11.01 10:00'
       ),
       bidSubmitEnd: getFieldValue(
         editedFields.bidSubmitEnd,
         originalData.bidSubmitEnd ||
-          sourceNode?.schedule?.expected_delivery ||
-          sourceNode?.bidSubmitEnd,
+        sourceNode?.schedule?.expected_delivery ||
+        sourceNode?.bidSubmitEnd,
         '2025.11.08 10:00'
       ),
       bidOpenTime: getFieldValue(
@@ -269,21 +301,21 @@ const NoticeEditor = () => {
         editedFields.bidMethod ||
         originalData.bidMethod ||
         (sourceNode?.procurement_method_raw?.includes('소액수의') ||
-        sourceNode?.bidMethod === 'small'
+          sourceNode?.bidMethod === 'small'
           ? 'small'
           : 'general'),
       contractMethod:
         editedFields.contractMethod ||
         originalData.contractMethod ||
         (sourceNode?.procurement_method_raw?.includes('제한경쟁') ||
-        sourceNode?.contractMethod === 'restricted'
+          sourceNode?.contractMethod === 'restricted'
           ? 'restricted'
           : 'general'),
       productName: getFieldValue(
         editedFields.productName,
         originalData.productName ||
-          sourceNode?.item_name ||
-          sourceNode?.productName,
+        sourceNode?.item_name ||
+        sourceNode?.productName,
         ''
       ),
       detail_item_codes: sourceNode?.detail_item_codes ||
@@ -302,8 +334,8 @@ const NoticeEditor = () => {
       orgName: getFieldValue(
         editedFields.orgName,
         originalData.orgName ||
-          sourceNode?.requesting_department ||
-          sourceNode?.orgName,
+        sourceNode?.requesting_department ||
+        sourceNode?.orgName,
         '한국환경공단'
       ),
       goodsContactInfo:
@@ -321,7 +353,11 @@ const NoticeEditor = () => {
           ? sourceNode.document_date.includes('일')
             ? sourceNode.document_date
             : `${sourceNode.document_date} 00일`
-          : '2025년 00월 00일'),
+          : new Date().toLocaleDateString('ko-KR', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+          })),
     };
   }, [documentId, serverData, originalData, editedFields, state?.extractedData]);
 
@@ -374,20 +410,43 @@ const NoticeEditor = () => {
   };
 
   const handleGenerate = async () => {
+    if (!state?.templateId) {
+      toast({
+        title: '템플릿 ID 누락',
+        description: '템플릿 ID가 없습니다. 다시 업로드해주세요.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setIsGenerating(true);
     setGenerationStatus('loading');
 
     try {
-      // TODO: 실제 서버 API 호출로 교체
-      await new Promise((resolve, reject) => {
-        setTimeout(() => {
-          if (Math.random() > 0.3) {
-            resolve({ success: true });
-          } else {
-            reject(new Error('서버가 아직 준비되지 않았습니다'));
-          }
-        }, 2500);
+      // 1. Render TemplatePreview to HTML string
+      const queryClientForStatic = new QueryClient();
+
+      const htmlString = renderToStaticMarkup(
+        <QueryClientProvider client={queryClientForStatic}>
+          <TemplatePreview
+            data={previewData}
+          // documentId omitted intentionally to force usage of propData
+          />
+        </QueryClientProvider>
+      );
+
+      // 2. Call API
+      const classification = serverData?.classification || { type, subType };
+
+      const response = await generateDocumentApi({
+        extracted_data: previewData as Record<string, unknown>, // or serverData?.extractedData?
+        classification,
+        template_id: state.templateId,
+        format: 'markdown',
+        html: htmlString,
       });
+
+      console.log('Generated content:', response.content);
 
       setGenerationStatus('success');
       toast({
@@ -400,6 +459,7 @@ const NoticeEditor = () => {
         setGenerationStatus('idle');
       }, 1500);
     } catch (error) {
+      console.error('Generation Error:', error);
       setGenerationStatus('error');
       toast({
         title: '생성 실패',
@@ -419,13 +479,68 @@ const NoticeEditor = () => {
     setShowPreview(true);
   };
 
-  const handleExport = (format: 'hwp' | 'docx' | 'pdf') => {
+  const handleExport = async (format: 'hwp' | 'docx' | 'pdf') => {
+    if (!state?.templateId) {
+      toast({
+        title: '템플릿 ID 누락',
+        description: '템플릿 ID가 없습니다.',
+        variant: 'destructive',
+      });
+      return;
+    }
+
     setSelectedFormat(format);
+    setIsGenerating(true);
+    setGenerationStatus('loading');
+
     toast({
-      title: '내보내기 준비',
-      description: `공고문을 ${format === 'hwp' ? '한글' : format === 'docx' ? '워드' : 'PDF'} 형식으로 다운로드하고 있습니다.`,
+      title: '내보내기 시작',
+      description: `공고문을 ${format === 'hwp' ? '한글' : format === 'docx' ? '워드' : 'PDF'} 형식으로 변환하고 있습니다.`,
     });
-    // TODO: 실제 파일 내보내기 로직 구현
+
+    try {
+      const queryClientForStatic = new QueryClient();
+      const htmlString = renderToStaticMarkup(
+        <QueryClientProvider client={queryClientForStatic}>
+          <TemplatePreview
+            data={previewData}
+          />
+        </QueryClientProvider>
+      );
+
+      const classification = serverData?.classification || { type, subType };
+
+      const response = await generateDocumentApi({
+        extracted_data: previewData as Record<string, unknown>,
+        classification,
+        template_id: 6,
+        format: format,
+        html: htmlString,
+      });
+
+      // Download file
+      downloadDocument(response);
+
+      setGenerationStatus('success');
+      toast({
+        title: '내보내기 완료',
+        description: '파일이 다운로드되었습니다.',
+      });
+
+    } catch (error) {
+      console.error("Export failed:", error);
+      setGenerationStatus('error');
+      toast({
+        title: '내보내기 실패',
+        description: '파일 생성 중 오류가 발생했습니다.',
+        variant: 'destructive',
+      });
+    } finally {
+      setTimeout(() => {
+        setIsGenerating(false);
+        setGenerationStatus('idle');
+      }, 1500);
+    }
   };
 
   return (

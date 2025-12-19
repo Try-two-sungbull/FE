@@ -122,6 +122,8 @@ const Upload = () => {
       const extractedData = response.extractedData || response;
       const documentType = response.type || type || 'goods';
       const documentSubType = response.subType || response.bidMethod || 'small';
+      const templateId = response.template_id;
+      const sessionId = response.session_id;
 
       clearInterval(progressInterval);
 
@@ -130,10 +132,10 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'processing',
-                progress: 100,
-              }
+              ...f,
+              status: 'processing',
+              progress: 100,
+            }
             : f
         )
       );
@@ -143,20 +145,22 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'completed',
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                type: documentType as any,
-                // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                subType: documentSubType as any,
-                extractedData: {
-                  ...extractedData,
-                  // Ensure mandatory fields for display are present
-                  noticeNumber: extractedData.noticeNumber || '-',
-                  title: extractedData.title || '-',
-                  amount: extractedData.amount || '-',
-                },
-              }
+              ...f,
+              status: 'completed',
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              type: documentType as any,
+              // eslint-disable-next-line @typescript-eslint/no-explicit-any
+              subType: documentSubType as any,
+              extractedData: {
+                ...extractedData,
+                // Ensure mandatory fields for display are present
+                noticeNumber: extractedData.noticeNumber || '-',
+                title: extractedData.title || '-',
+                amount: extractedData.amount || '-',
+              },
+              template_id: templateId,
+              session_id: sessionId,
+            }
             : f
         )
       );
@@ -166,13 +170,13 @@ const Upload = () => {
         prev.map((f) =>
           f.id === fileId
             ? {
-                ...f,
-                status: 'error',
-                error:
-                  error instanceof Error
-                    ? error.message
-                    : '업로드 중 오류가 발생했습니다',
-              }
+              ...f,
+              status: 'error',
+              error:
+                error instanceof Error
+                  ? error.message
+                  : '업로드 중 오류가 발생했습니다',
+            }
             : f
         )
       );
@@ -193,6 +197,7 @@ const Upload = () => {
       navigate(`/editor/${file.type}/${file.subType}`, {
         state: {
           documentId: file.id,
+          templateId: file.template_id,
         },
       });
     }
