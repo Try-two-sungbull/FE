@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Navigate } from 'react-router-dom';
-import { checkAuth } from '@/lib/auth';
+// import { checkAuth } from '@/lib/auth'; // Removed
 
 interface ProtectedRouteProps {
     children: React.ReactNode;
@@ -14,7 +14,9 @@ export function ProtectedRoute({ children }: ProtectedRouteProps) {
     const [isAuthenticated, setIsAuthenticated] = useState<boolean | null>(null);
 
     useEffect(() => {
-        checkAuth().then(setIsAuthenticated);
+        // checkAuth().then(setIsAuthenticated);
+        const isAuth = localStorage.getItem('isAuthenticated') === 'true';
+        setIsAuthenticated(isAuth);
     }, []);
 
     // 로딩 중
